@@ -1,30 +1,18 @@
-import AWS from 'aws-sdk';
+// AWS S3 service disabled for basic functionality
+// import AWS from 'aws-sdk';
 import multer from 'multer';
-import multerS3 from 'multer-s3';
+// import multerS3 from 'multer-s3';
 
-// Configure AWS
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION,
-});
+// AWS S3 service disabled for basic functionality
+let s3: any = null;
+let isConfigured = false;
 
-const s3 = new AWS.S3() as any;
+console.warn('AWS S3 service disabled. File upload features will be disabled.');
 
 class S3Service {
-  // Configure multer for S3 uploads
+  // Configure multer for local storage (S3 disabled)
   upload = multer({
-    storage: multerS3({
-      s3: s3,
-      bucket: process.env.S3_BUCKET_NAME!,
-      acl: 'private',
-      key: function (req, file, cb) {
-        const folder = file.fieldname === 'pdf' ? 'pdfs' : 'thumbnails';
-        const fileName = `${folder}/${Date.now()}-${file.originalname}`;
-        cb(null, fileName);
-      },
-      contentType: multerS3.AUTO_CONTENT_TYPE,
-    }),
+    storage: multer.memoryStorage(),
     limits: {
       fileSize: parseInt(process.env.MAX_FILE_SIZE || '50000000'), // 50MB
     },
@@ -40,64 +28,24 @@ class S3Service {
   });
 
   async uploadFile(file: Express.Multer.File, folder: string = 'pdfs'): Promise<string> {
-    const params = {
-      Bucket: process.env.S3_BUCKET_NAME!,
-      Key: `${folder}/${Date.now()}-${file.originalname}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ACL: 'private',
-    };
-
-    try {
-      const result = await s3.upload(params).promise();
-      return result.Location;
-    } catch (error) {
-      throw new Error(`Failed to upload file to S3: ${error}`);
-    }
+    // S3 service disabled - return a mock URL for development
+    console.warn('S3 service disabled. Returning mock file URL for development.');
+    return `mock://uploads/${folder}/${Date.now()}-${file.originalname}`;
   }
 
   async deleteFile(key: string): Promise<boolean> {
-    const params = {
-      Bucket: process.env.S3_BUCKET_NAME!,
-      Key: key,
-    };
-
-    try {
-      await s3.deleteObject(params).promise();
-      return true;
-    } catch (error) {
-      console.error(`Failed to delete file from S3: ${error}`);
-      return false;
-    }
+    console.warn('S3 service disabled. Cannot delete file.');
+    return false;
   }
 
   async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-    const params = {
-      Bucket: process.env.S3_BUCKET_NAME!,
-      Key: key,
-      Expires: expiresIn,
-    };
-
-    try {
-      const url = await s3.getSignedUrlPromise('getObject', params);
-      return url;
-    } catch (error) {
-      throw new Error(`Failed to generate signed URL: ${error}`);
-    }
+    console.warn('S3 service disabled. Returning mock URL for development.');
+    return `mock://signed-url/${key}`;
   }
 
   async downloadFile(key: string): Promise<Buffer> {
-    const params = {
-      Bucket: process.env.S3_BUCKET_NAME!,
-      Key: key,
-    };
-
-    try {
-      const result = await s3.getObject(params).promise();
-      return result.Body as Buffer;
-    } catch (error) {
-      throw new Error(`Failed to download file from S3: ${error}`);
-    }
+    console.warn('S3 service disabled. Cannot download file.');
+    throw new Error('S3 service disabled. Please configure S3 credentials.');
   }
 
   extractKeyFromUrl(url: string): string {

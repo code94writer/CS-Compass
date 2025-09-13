@@ -1,17 +1,22 @@
-import Razorpay from 'razorpay';
+// Razorpay service disabled for basic functionality
+// import Razorpay from 'razorpay';
 import { RazorpayOrder } from '../types';
 
 class RazorpayService {
-  private razorpay: Razorpay;
+  private razorpay: any = null;
+  private isConfigured: boolean = false;
 
   constructor() {
-    this.razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID!,
-      key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    });
+    // Razorpay service disabled for basic functionality
+    console.warn('Razorpay service disabled. Payment features will be disabled.');
+    this.isConfigured = false;
   }
 
   async createOrder(amount: number, receipt: string): Promise<RazorpayOrder> {
+    if (!this.isConfigured || !this.razorpay) {
+      throw new Error('Razorpay service not configured. Please configure payment credentials.');
+    }
+
     const options = {
       amount: amount * 100, // Razorpay expects amount in paise
       currency: 'INR',
@@ -34,6 +39,10 @@ class RazorpayService {
   }
 
   async verifyPayment(paymentId: string, orderId: string, signature: string): Promise<boolean> {
+    if (!this.isConfigured) {
+      throw new Error('Razorpay service not configured. Please configure payment credentials.');
+    }
+
     try {
       const crypto = require('crypto');
       const expectedSignature = crypto
@@ -48,6 +57,10 @@ class RazorpayService {
   }
 
   async getPaymentDetails(paymentId: string): Promise<any> {
+    if (!this.isConfigured || !this.razorpay) {
+      throw new Error('Razorpay service not configured. Please configure payment credentials.');
+    }
+
     try {
       const payment = await this.razorpay.payments.fetch(paymentId);
       return payment;
@@ -57,6 +70,10 @@ class RazorpayService {
   }
 
   async refundPayment(paymentId: string, amount?: number): Promise<any> {
+    if (!this.isConfigured || !this.razorpay) {
+      throw new Error('Razorpay service not configured. Please configure payment credentials.');
+    }
+
     try {
       const refundOptions: any = {
         payment_id: paymentId,

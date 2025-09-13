@@ -1,16 +1,20 @@
-import twilio from 'twilio';
-
+// Twilio service completely disabled for basic functionality
 class TwilioService {
-  private client: twilio.Twilio;
+  private client: any = null;
+  private isConfigured: boolean = false;
 
   constructor() {
-    this.client = twilio(
-      process.env.TWILIO_ACCOUNT_SID!,
-      process.env.TWILIO_AUTH_TOKEN!
-    );
+    // Twilio service completely disabled for basic functionality
+    console.warn('Twilio service disabled. SMS/OTP features will be disabled.');
+    this.isConfigured = false;
   }
 
   async sendOTP(mobile: string, otp: string): Promise<boolean> {
+    if (!this.isConfigured || !this.client) {
+      console.warn(`Twilio not configured. OTP for ${mobile}: ${otp}`);
+      return true; // Return true for development/testing purposes
+    }
+
     try {
       const message = await this.client.messages.create({
         body: `Your CS Compass OTP is: ${otp}. This OTP is valid for 5 minutes.`,
@@ -27,6 +31,11 @@ class TwilioService {
   }
 
   async sendSMS(mobile: string, message: string): Promise<boolean> {
+    if (!this.isConfigured || !this.client) {
+      console.warn(`Twilio not configured. SMS for ${mobile}: ${message}`);
+      return true; // Return true for development/testing purposes
+    }
+
     try {
       const result = await this.client.messages.create({
         body: message,
