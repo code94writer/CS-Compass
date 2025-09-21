@@ -4,11 +4,6 @@
 
 echo "🚀 Setting up CS Compass Database..."
 
-# Check if PostgreSQL is running
-if ! pg_isready -q; then
-    echo "❌ PostgreSQL is not running. Please start PostgreSQL first."
-    exit 1
-fi
 
 # Database configuration
 DB_NAME="cs_compass"
@@ -33,3 +28,10 @@ else
     echo "❌ Database setup failed!"
     exit 1
 fi
+
+# ✅ Database setup completed successfully!
+# 📊 Database: cs_compass
+# 👤 Default admin user: admin@cscompass.com
+# 🔑 Default admin password: admin123
+
+# ⚠️  Please change the default admin password after first login!

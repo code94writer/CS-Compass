@@ -8,24 +8,46 @@ const router = Router();
 
 // Validation rules
 const registerValidation = [
-  body('email').isEmail().normalizeEmail(),
-  body('mobile').isMobilePhone('any'),
-  body('password').isLength({ min: 8 }),
+    body().custom(req => {
+      const { email, mobile } = req;
+      if (!email && !mobile) {
+        throw new Error('Either email or mobile is required');
+      }
+      if (email) {
+        const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+        if (!emailRegex.test(email)) {
+          throw new Error('Invalid email format');
+        }
+      }
+      if (mobile) {
+        // Accepts +91XXXXXXXXXX, 91XXXXXXXXXX, or XXXXXXXXXX (10 digits, starts with 6-9)
+        const phoneRegex = /^(\+91|91)?[6-9][0-9]{9}$/;
+        if (!phoneRegex.test(mobile)) {
+          throw new Error('Mobile number must be a valid Indian number');
+        }
+      }
+      return true;
+    }),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
 ];
 
 const loginValidation = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').notEmpty(),
+  body('emailOrPhone')
+    .notEmpty().withMessage('Email or phone number is required')
+    .custom((value) => {
+      // Email regex (simple)
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+      // Indian phone regex: 10 digits, starts with 6-9, optional +91 or 91 prefix
+      const phoneRegex = /^(\+91|91)?[6-9][0-9]{9}$/;
+      if (emailRegex.test(value) || phoneRegex.test(value)) {
+        return true;
+      }
+      throw new Error('Enter a valid email or Indian phone number');
+    }),
+  body('password').notEmpty().withMessage('Password is required'),
 ];
 
-const sendOTPValidation = [
-  body('mobile').isMobilePhone('any'),
-];
-
-const verifyOTPValidation = [
-  body('mobile').isMobilePhone('any'),
-  body('code').isLength({ min: 6, max: 6 }).isNumeric(),
-];
+// OTP validation rules removed - OTP functionality disabled
 
 const updateProfileValidation = [
   body('email').optional().isEmail().normalizeEmail(),
@@ -88,7 +110,7 @@ router.post('/register', validate(registerValidation), AuthController.register);
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Login user
+ *     summary: Login user with email or phone number
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -97,12 +119,12 @@ router.post('/register', validate(registerValidation), AuthController.register);
  *           schema:
  *             type: object
  *             required:
- *               - email
+ *               - emailOrPhone
  *               - password
  *             properties:
- *               email:
+ *               emailOrPhone:
  *                 type: string
- *                 format: email
+ *                 description: Email address or phone number
  *                 example: user@example.com
  *               password:
  *                 type: string
@@ -167,7 +189,7 @@ router.post('/login', validate(loginValidation), AuthController.login);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/send-otp', validate(sendOTPValidation), AuthController.sendOTP);
+// OTP route removed - OTP functionality disabled
 
 /**
  * @swagger
@@ -207,7 +229,7 @@ router.post('/send-otp', validate(sendOTPValidation), AuthController.sendOTP);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/verify-otp', validate(verifyOTPValidation), AuthController.verifyOTP);
+// OTP route removed - OTP functionality disabled
 
 /**
  * @swagger

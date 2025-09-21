@@ -13,7 +13,7 @@ export interface PDF {
   id: string;
   title: string;
   description: string;
-  category: string;
+  category_id: string;
   price: number;
   file_url: string;
   thumbnail_url?: string;

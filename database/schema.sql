@@ -3,17 +3,20 @@
 -- Create database (run this separately)
 -- CREATE DATABASE cs_compass;
 
--- Users table
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     mobile VARCHAR(15) UNIQUE NOT NULL,
     password VARCHAR(255),
-    is_verified BOOLEAN DEFAULT FALSE,
+    is_verified BOOLEAN DEFAULT TRUE, -- Set to TRUE by default as email/mobile verification is disabled
     role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('student', 'admin')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Index for quick lookup by email or mobile
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
 
 -- Categories table
 CREATE TABLE IF NOT EXISTS categories (
@@ -23,12 +26,16 @@ CREATE TABLE IF NOT EXISTS categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Index for quick lookup by name
+CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
+
 -- PDFs table
+-- category_id now references categories(id) for normalization
 CREATE TABLE IF NOT EXISTS pdfs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    category VARCHAR(100) NOT NULL,
+    category_id UUID NOT NULL REFERENCES categories(id),
     price DECIMAL(10,2) NOT NULL,
     file_url TEXT NOT NULL,
     thumbnail_url TEXT,
@@ -39,6 +46,11 @@ CREATE TABLE IF NOT EXISTS pdfs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Indexes for pdfs
+CREATE INDEX IF NOT EXISTS idx_pdfs_category_id ON pdfs(category_id);
+CREATE INDEX IF NOT EXISTS idx_pdfs_uploaded_by ON pdfs(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_pdfs_is_active ON pdfs(is_active);
+
 -- Purchases table
 CREATE TABLE IF NOT EXISTS purchases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -48,16 +60,22 @@ CREATE TABLE IF NOT EXISTS purchases (
     payment_id VARCHAR(255) UNIQUE NOT NULL,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_user_pdf UNIQUE (user_id, pdf_id)
 );
 
--- OTPs table
-CREATE TABLE IF NOT EXISTS otps (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    mobile VARCHAR(15) NOT NULL,
-    code VARCHAR(6) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    is_used BOOLEAN DEFAULT FALSE,
+-- Indexes for purchases
+CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_pdf_id ON purchases(pdf_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_status ON purchases(status);
+
+-- OTPs table (disabled, keep for future use)
+-- CREATE TABLE IF NOT EXISTS otps (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     mobile VARCHAR(15) NOT NULL,
+--     code VARCHAR(6) NOT NULL,
+--     expires_at TIMESTAMP NOT NULL,
+--     is_used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

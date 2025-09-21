@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { PDFController } from '../controllers/pdfController';
-import { authenticateToken, optionalAuth } from '../middleware/auth';
+import { authenticateToken, optionalAuth, requireAdmin } from '../middleware/auth';
 import S3Service from '../services/s3';
 
 const router = Router();
@@ -37,9 +37,10 @@ router.get('/', PDFController.getAllPDFs);
 router.get('/:id', PDFController.getPDFById);
 router.get('/:id/preview', PDFController.getPDFPreview);
 
-// Protected routes (authentication required)
+// Admin-only routes (authentication + admin role required)
 router.post('/upload', 
   authenticateToken, 
+  requireAdmin,
   S3Service.upload.fields([
     { name: 'pdf', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 }
@@ -48,8 +49,8 @@ router.post('/upload',
   PDFController.uploadPDF
 );
 
-router.put('/:id', authenticateToken, updatePDFValidation, PDFController.updatePDF);
-router.delete('/:id', authenticateToken, PDFController.deletePDF);
+router.put('/:id', authenticateToken, requireAdmin, updatePDFValidation, PDFController.updatePDF);
+router.delete('/:id', authenticateToken, requireAdmin, PDFController.deletePDF);
 router.get('/:id/download', authenticateToken, PDFController.downloadPDF);
 router.get('/user/purchases', authenticateToken, PDFController.getUserPurchases);
 

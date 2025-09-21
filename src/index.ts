@@ -15,6 +15,7 @@ import authRoutes from './routes/auth';
 import pdfRoutes from './routes/pdf';
 import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
+import pdfLocalRoutes from './routes/pdfLocal';
 
 // Import utilities
 import { ResponseHelper } from './utils/response';
@@ -66,7 +67,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 auth requests per windowMs
+  max: 15, // limit each IP to 5 auth requests per windowMs
   message: {
     success: false,
     error: 'Too many authentication attempts',
@@ -143,6 +144,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/pdfs', pdfRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/pdfs', pdfLocalRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

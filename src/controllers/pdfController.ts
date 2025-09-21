@@ -67,7 +67,7 @@ export class PDFController {
         return;
       }
 
-      const { title, description, category, price } = req.body;
+  const { title, description, category_id, price } = req.body;
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
       if (!files.pdf || files.pdf.length === 0) {
@@ -91,7 +91,7 @@ export class PDFController {
       const pdf = await PDFModel.create({
         title,
         description,
-        category,
+        category_id,
         price: parseFloat(price),
         file_url: pdfUrl,
         thumbnail_url: thumbnailUrl,
@@ -114,7 +114,7 @@ export class PDFController {
   static async updatePDF(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { title, description, category, price, is_active } = req.body;
+  const { title, description, category_id, price, is_active } = req.body;
 
       const pdf = await PDFModel.findById(id);
       if (!pdf) {
@@ -123,11 +123,11 @@ export class PDFController {
       }
 
       const updateData: any = {};
-      if (title) updateData.title = title;
-      if (description) updateData.description = description;
-      if (category) updateData.category = category;
-      if (price) updateData.price = parseFloat(price);
-      if (is_active !== undefined) updateData.is_active = is_active === 'true';
+  if (title) updateData.title = title;
+  if (description) updateData.description = description;
+  if (category_id) updateData.category_id = category_id;
+  if (price) updateData.price = parseFloat(price);
+  if (is_active !== undefined) updateData.is_active = is_active === 'true';
 
       const updatedPDF = await PDFModel.update(id, updateData);
 

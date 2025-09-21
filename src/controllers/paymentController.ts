@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { PDFModel } from '../models/PDF';
-import { PurchaseModel } from '../models/Purchase';
+import { PurchaseModel, PurchaseStatus } from '../models/Purchase';
 import RazorpayService from '../services/razorpay';
 import { AuthRequest } from '../middleware/auth';
 
@@ -38,7 +38,7 @@ export class PaymentController {
         pdf_id: pdfId,
         amount: pdf.price,
         payment_id: '', // Will be updated after order creation
-        status: 'pending',
+        status: PurchaseStatus.Pending,
       });
 
       // Create Razorpay order
@@ -48,7 +48,7 @@ export class PaymentController {
       );
 
       // Update purchase with payment ID
-      await PurchaseModel.updateStatus(order.id, 'pending');
+  await PurchaseModel.updateStatus(order.id, PurchaseStatus.Pending);
 
       res.json({
         message: 'Order created successfully',
@@ -94,7 +94,7 @@ export class PaymentController {
         return;
       }
 
-      await PurchaseModel.updateStatus(orderId, 'completed');
+  await PurchaseModel.updateStatus(orderId, PurchaseStatus.Completed);
 
       res.json({
         message: 'Payment verified successfully',
@@ -180,7 +180,7 @@ export class PaymentController {
       );
 
       // Update purchase status
-      await PurchaseModel.updateStatus(purchase.payment_id, 'refunded');
+  await PurchaseModel.updateStatus(purchase.payment_id, PurchaseStatus.Refunded);
 
       res.json({
         message: 'Refund processed successfully',
@@ -203,9 +203,9 @@ export class PaymentController {
       
       res.json({
         stats: {
-          total_purchases: parseInt(stats.total_purchases),
-          total_revenue: parseFloat(stats.total_revenue),
-          unique_customers: parseInt(stats.unique_customers),
+          total_purchases: stats.total_purchases,
+          total_revenue: stats.total_revenue,
+          unique_customers: stats.unique_customers,
         },
       });
     } catch (error) {
