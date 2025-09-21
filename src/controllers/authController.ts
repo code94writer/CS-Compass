@@ -1,12 +1,97 @@
+
 import { Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { validationResult } from 'express-validator';
 import { UserModel } from '../models/User';
+import { UserSessionModel } from '../models/UserSession';
 import { OTPModel } from '../models/OTP';
 import { AuthUtils } from '../utils/auth';
 import TwilioService from '../services/twilio';
 import { AuthRequest } from '../middleware/auth';
 
 export class AuthController {
+  // ...existing code...
+
+  // Send OTP for login
+  static async sendOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+      const { mobile } = req.body;
+      // Check if user exists
+      const user = await UserModel.findByMobile(mobile);
+      if (!user) {
+        res.status(404).json({ error: 'User with this mobile number does not exist' });
+        return;
+      }
+      // Rate limit: max 5 OTPs in 5 minutes
+      const recentCount = await OTPModel.getRecentOTPCount(mobile, 5);
+      if (recentCount >= 5) {
+        res.status(429).json({ error: 'Too many OTP requests. Please try again later.' });
+        return;
+      }
+      const otp = AuthUtils.generateOTP();
+      await OTPModel.create({
+        mobile,
+        code: otp,
+        expires_at: new Date(Date.now() + 5 * 60 * 1000),
+        is_used: false,
+      });
+      await TwilioService.sendOTP(mobile, otp);
+      res.json({ message: 'OTP sent successfully' });
+    } catch (error) {
+      console.error('Send OTP error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Verify OTP and login
+  static async verifyOtp(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+      const { mobile, code } = req.body;
+      const user = await UserModel.findByMobile(mobile);
+      if (!user) {
+        res.status(404).json({ error: 'User with this mobile number does not exist' });
+        return;
+      }
+      const otpRecord = await OTPModel.findByMobileAndCode(mobile, code);
+      if (!otpRecord) {
+        res.status(400).json({ error: 'Invalid or expired OTP' });
+        return;
+      }
+      await OTPModel.markAsUsed(otpRecord.id);
+      // Optionally, mark user as verified
+      await UserModel.updateVerificationStatus(user.id, true);
+      // Generate JWT token
+      const token = AuthUtils.generateToken({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      });
+      // Store session token for single-device login
+      await UserSessionModel.upsertSession(user.id, token);
+      res.json({
+        message: 'OTP verified successfully',
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          mobile: user.mobile,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error('Verify OTP error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
   // Register with email and password
   static async register(req: Request, res: Response): Promise<void> {
     try {
@@ -104,16 +189,22 @@ export class AuthController {
         return;
       }
 
-      // Check if user has password (not OTP-only user)
-      if (!user.password) {
-        res.status(401).json({ error: 'Please use OTP login for this account' });
-        return;
-      }
 
-      // Verify password
-      const isPasswordValid = await AuthUtils.comparePassword(password, user.password);
-      if (!isPasswordValid) {
-        res.status(401).json({ error: 'Invalid credentials' });
+      // Only admins can login with password, users (students) must use OTP
+      if (user.role === 'admin') {
+        if (!user.password) {
+          res.status(401).json({ error: 'Admin account does not have a password set' });
+          return;
+        }
+        // Verify password
+        const isPasswordValid = await AuthUtils.comparePassword(password, user.password);
+        if (!isPasswordValid) {
+          res.status(401).json({ error: 'Invalid credentials' });
+          return;
+        }
+      } else {
+        // For students/users, password login is disabled
+        res.status(401).json({ error: 'Please use OTP login for this account' });
         return;
       }
 
@@ -123,13 +214,13 @@ export class AuthController {
       //   return;
       // }
 
-      // Generate JWT token
       const token = AuthUtils.generateToken({
         userId: user.id,
         email: user.email,
         role: user.role,
       });
-
+      // Store session token for single-device login
+      await UserSessionModel.upsertSession(user.id, token);
       res.json({
         message: 'Login successful',
         token,

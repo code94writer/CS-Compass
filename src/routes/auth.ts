@@ -47,7 +47,33 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
-// OTP validation rules removed - OTP functionality disabled
+const sendOtpValidation = [
+  body('mobile')
+    .notEmpty().withMessage('Mobile number is required')
+    .custom((value) => {
+      // E.164 format
+      const phoneRegex = /^\+[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(value)) {
+        throw new Error('Enter a valid mobile number in E.164 format');
+      }
+      return true;
+    }),
+];
+
+const verifyOtpValidation = [
+  body('mobile')
+    .notEmpty().withMessage('Mobile number is required')
+    .custom((value) => {
+      const phoneRegex = /^\+[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(value)) {
+        throw new Error('Enter a valid mobile number in E.164 format');
+      }
+      return true;
+    }),
+  body('code')
+    .notEmpty().withMessage('OTP code is required')
+    .isLength({ min: 6, max: 6 }).withMessage('OTP code must be 6 digits'),
+];
 
 const updateProfileValidation = [
   body('email').optional().isEmail().normalizeEmail(),
@@ -189,7 +215,7 @@ router.post('/login', validate(loginValidation), AuthController.login);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-// OTP route removed - OTP functionality disabled
+router.post('/send-otp', validate(sendOtpValidation), AuthController.sendOtp);
 
 /**
  * @swagger
@@ -229,7 +255,7 @@ router.post('/login', validate(loginValidation), AuthController.login);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-// OTP route removed - OTP functionality disabled
+router.post('/verify-otp', validate(verifyOtpValidation), AuthController.verifyOtp);
 
 /**
  * @swagger

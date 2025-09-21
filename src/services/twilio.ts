@@ -1,12 +1,19 @@
-// Twilio service completely disabled for basic functionality
+import twilio from 'twilio';
 class TwilioService {
   private client: any = null;
   private isConfigured: boolean = false;
 
   constructor() {
-    // Twilio service completely disabled for basic functionality
-    console.warn('Twilio service disabled. SMS/OTP features will be disabled.');
-    this.isConfigured = false;
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (accountSid && authToken && process.env.TWILIO_PHONE_NUMBER) {
+      this.client = twilio(accountSid, authToken);
+      this.isConfigured = true;
+      console.log('Twilio service enabled. SMS/OTP features are active.');
+    } else {
+      this.isConfigured = false;
+      console.warn('Twilio service disabled. SMS/OTP features will be disabled.');
+    }
   }
 
   async sendOTP(mobile: string, otp: string): Promise<boolean> {
