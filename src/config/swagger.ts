@@ -19,7 +19,7 @@ const swaggerDefinition: SwaggerDefinition = {
   servers: [
     {
       url: process.env.NODE_ENV === 'production' 
-        ? 'https://api.cscompass.com' 
+        ? 'https://api.civilservicescompass.com' 
         : 'http://localhost:3000',
       description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server',
     },
