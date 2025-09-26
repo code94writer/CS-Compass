@@ -10,7 +10,7 @@
   "test": "jest --runInBand",
   "test-setup": "node scripts/test-setup.js",
   "setup-db": "./scripts/setup-db.sh",
-  "migrate": "node-pg-migrate -c ./node-pg-migrate.config.js",
+  "migrate": "node-pg-migrate up -c ./node-pg-migrate.config.js",
   "migrate:create": "node-pg-migrate create -m database/migrations",
   "prestart": "npm run migrate",
   "postinstall": "npm run migrate"

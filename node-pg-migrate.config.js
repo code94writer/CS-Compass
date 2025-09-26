@@ -1,7 +1,7 @@
 module.exports = {
-  migrationFolder: 'database/migrations',
+  'migrations-dir': 'database/migrations',
   direction: 'up',
   logFileName: 'node-pg-migrate.log',
-  databaseUrl: process.env.DATABASE_URL || undefined,
+  databaseUrlVar: 'DATABASE_URL',
   // You can add more config as needed
 };
