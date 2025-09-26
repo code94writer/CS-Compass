@@ -72,3 +72,32 @@ export interface WatermarkOptions {
   fontSize: number;
   color: string;
 }
+
+// Course-related types
+export interface CourseContent {
+  pdfs?: string[]; // PDF IDs
+  folders?: string[]; // Folder names or IDs
+  videoUrls?: string[];
+}
+
+export interface Offer {
+  title: string;
+  description?: string;
+  validTill?: Date;
+  discountPercent?: number;
+}
+
+export interface Course {
+  id?: string;
+  name: string;
+  description: string;
+  contents: CourseContent;
+  aboutCreator: string;
+  price: number;
+  discount?: number;
+  offer?: Offer;
+  expiry?: Date;
+  createdBy: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}

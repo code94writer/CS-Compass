@@ -60,7 +60,44 @@ const uploadLocalPDFValidation = [
   body('price').isFloat({ min: 0 }),
 ];
 
-// Admin-only: Upload PDF to local storage
+/**
+ * @swagger
+ * /api/pdfs/upload-local:
+ *   post:
+ *     summary: Upload a PDF to local storage (admin only)
+ *     tags: [PDFs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pdf:
+ *                 type: string
+ *                 format: binary
+ *               title:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: PDF uploaded successfully
+ *       400:
+ *         description: Invalid input or missing file
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Server error
+ */
 router.post(
   '/upload-local',
   authenticateToken,
@@ -70,7 +107,18 @@ router.post(
   PDFLocalController.uploadLocalPDF
 );
 
-// Public: Get all local PDFs
+/**
+ * @swagger
+ * /api/pdfs/local:
+ *   get:
+ *     summary: Get all PDFs stored in local storage
+ *     tags: [PDFs]
+ *     responses:
+ *       200:
+ *         description: List of local PDFs
+ *       500:
+ *         description: Server error
+ */
 router.get('/local', PDFLocalController.getLocalPDFs);
 
 export default router;

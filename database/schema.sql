@@ -64,6 +64,37 @@ CREATE TABLE IF NOT EXISTS purchases (
     CONSTRAINT unique_user_pdf UNIQUE (user_id, pdf_id)
 );
 
+-- Courses table
+CREATE TABLE IF NOT EXISTS courses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    contents JSONB NOT NULL, -- stores pdfs, folders, video URLs
+    about_creator TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    discount DECIMAL(5,2),
+    offer JSONB,
+    expiry TIMESTAMP,
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User-Course purchases table
+CREATE TABLE IF NOT EXISTS user_courses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expiry_date TIMESTAMP,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_id VARCHAR(255) UNIQUE NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_user_course UNIQUE (user_id, course_id)
+);
+
 -- Indexes for purchases
 CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_pdf_id ON purchases(pdf_id);

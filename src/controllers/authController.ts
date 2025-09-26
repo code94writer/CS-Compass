@@ -20,11 +20,17 @@ export class AuthController {
         return;
       }
       const { mobile } = req.body;
-      // Check if user exists
-      const user = await UserModel.findByMobile(mobile);
+      // Check if user exists, if not, create
+      let user = await UserModel.findByMobile(mobile);
       if (!user) {
-        res.status(404).json({ error: 'User with this mobile number does not exist' });
-        return;
+        // Auto-register user with minimal info
+        user = await UserModel.create({
+          email: '',
+          mobile,
+          password: '',
+          is_verified: false,
+          role: 'student',
+        });
       }
       // Rate limit: max 5 OTPs in 5 minutes
       const recentCount = await OTPModel.getRecentOTPCount(mobile, 5);

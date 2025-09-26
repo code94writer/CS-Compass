@@ -16,6 +16,7 @@ import pdfRoutes from './routes/pdf';
 import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
 import pdfLocalRoutes from './routes/pdfLocal';
+import courseRoutes from './routes/course';
 
 // Import utilities
 import { ResponseHelper } from './utils/response';
@@ -145,6 +146,7 @@ app.use('/api/pdfs', pdfRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/pdfs', pdfLocalRoutes);
+app.use('/api/courses', courseRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
