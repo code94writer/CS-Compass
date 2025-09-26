@@ -206,6 +206,16 @@ src/
 
 5. **Configure AWS S3** for file storage
 
+## Database Migrations (Automated)
+
+- All database schema changes are managed with [node-pg-migrate](https://github.com/salsita/node-pg-migrate).
+- Migrations are run automatically on every install and before the server starts (see `prestart` and `postinstall` scripts in `package.json`).
+- To create a new migration after a schema change:
+  1. Run: `npm run migrate:create <migration-name>`
+  2. Edit the generated file in `database/migrations/` to define your schema changes (up/down SQL).
+  3. Deploy or start the app—migrations will be applied automatically.
+- No manual migration steps are needed for production or development.
+
 ## Contributing
 
 1. Fork the repository

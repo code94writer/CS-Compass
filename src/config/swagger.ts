@@ -18,10 +18,15 @@ const swaggerDefinition: SwaggerDefinition = {
   },
   servers: [
     {
-      url: process.env.NODE_ENV === 'production' 
-        ? 'https://api.civilservicescompass.com' 
-        : 'http://localhost:3000',
-      description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server',
+      url:
+        process.env.SERVER_URL ||
+        (process.env.NODE_ENV === 'production'
+          ? 'https://api.civilservicescompass.com'
+          : 'http://localhost:3000'),
+      description:
+        process.env.NODE_ENV === 'production'
+          ? 'Production server'
+          : 'Development server',
     },
   ],
   components: {

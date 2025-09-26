@@ -4,12 +4,16 @@
   "description": "CS Compass - PDF Marketplace for Students",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts",
-    "test": "jest --runInBand",
-    "test-setup": "node scripts/test-setup.js",
-    "setup-db": "./scripts/setup-db.sh"
+  "build": "tsc",
+  "start": "node dist/index.js",
+  "dev": "nodemon src/index.ts",
+  "test": "jest --runInBand",
+  "test-setup": "node scripts/test-setup.js",
+  "setup-db": "./scripts/setup-db.sh",
+  "migrate": "node-pg-migrate -c ./node-pg-migrate.config.js",
+  "migrate:create": "node-pg-migrate create -m database/migrations",
+  "prestart": "npm run migrate",
+  "postinstall": "npm run migrate"
   },
   "keywords": [
     "pdf",
@@ -33,6 +37,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "multer-s3": "^3.0.1",
+    "node-pg-migrate": "^8.0.3",
     "nodemailer": "^6.9.15",
     "pdf-lib": "^1.17.1",
     "pdf2pic": "^3.0.1",

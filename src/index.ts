@@ -18,14 +18,28 @@ import adminRoutes from './routes/admin';
 import pdfLocalRoutes from './routes/pdfLocal';
 import courseRoutes from './routes/course';
 
+
 // Import utilities
 import { ResponseHelper } from './utils/response';
+
+// Ensure DB schema
+import { ensureDatabaseSchema } from './utils/ensureSchema';
+import { runMigrations } from './utils/runMigrations';
 
 // Load environment variables
 dotenv.config();
 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Run migrations and ensure tables exist before starting server
+runMigrations()
+  .then(() => ensureDatabaseSchema())
+  .catch((err) => {
+    logger.error('Failed to run migrations or ensure database schema', err);
+    process.exit(1);
+  });
 
 // Security middleware
 app.use(helmet({
