@@ -258,7 +258,7 @@ process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully');
   process.exit(0);
 });
-
+console.log("new changes")
 // Start server
 const server = app.listen(PORT, () => {
   logger.info('Server started', {
@@ -268,6 +268,7 @@ const server = app.listen(PORT, () => {
   });
   const apidocurl = process.env.NODE_ENV === 'production' ? `${process.env.SERVER_URL}/api-docs` : `http://localhost:${PORT}/api-docs`;
   const healthurl = process.env.NODE_ENV === 'production' ? `${process.env.SERVER_URL}/health` : `http://localhost:${PORT}/health`;
+  console.log('----------------------------------------');
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📚 CS Compass API v1.0.0`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
