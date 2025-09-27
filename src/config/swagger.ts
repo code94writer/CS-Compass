@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+console.log("🚀 SERVER_URL from env:", process.env.SERVER_URL);
+
 const swaggerDefinition: SwaggerDefinition = {
   openapi: '3.0.0',
   info: {
@@ -23,10 +25,9 @@ const swaggerDefinition: SwaggerDefinition = {
   servers: [
     {
       url:
-        process.env.SERVER_URL ||
-        (process.env.NODE_ENV === 'production'
-          ? 'https://api.civilservicescompass.com'
-          : 'http://localhost:3000'),
+        process.env.NODE_ENV === 'production'
+          ? process.env.SERVER_URL
+          : 'http://localhost:3000',
       description:
         process.env.NODE_ENV === 'production'
           ? 'Production server'
