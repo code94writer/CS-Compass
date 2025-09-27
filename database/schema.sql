@@ -95,31 +95,38 @@ CREATE TABLE IF NOT EXISTS user_courses (
     CONSTRAINT unique_user_course UNIQUE (user_id, course_id)
 );
 
+    -- OTPs table (for mobile OTP login/verification)
+    CREATE TABLE IF NOT EXISTS otps (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        mobile VARCHAR(15) NOT NULL,
+        code VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        is_used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Indexes for otps
+    CREATE INDEX IF NOT EXISTS idx_otps_mobile ON otps(mobile);
+    CREATE INDEX IF NOT EXISTS idx_otps_expires_at ON otps(expires_at);
+
 -- Indexes for purchases
 CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_pdf_id ON purchases(pdf_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_status ON purchases(status);
 
--- OTPs table (disabled, keep for future use)
--- CREATE TABLE IF NOT EXISTS otps (
---     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
---     mobile VARCHAR(15) NOT NULL,
---     code VARCHAR(6) NOT NULL,
---     expires_at TIMESTAMP NOT NULL,
---     is_used BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- );
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
-CREATE INDEX IF NOT EXISTS idx_pdfs_category ON pdfs(category);
+-- CREATE INDEX IF NOT EXISTS idx_pdfs_category ON pdfs(category);
 CREATE INDEX IF NOT EXISTS idx_pdfs_is_active ON pdfs(is_active);
 CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_pdf_id ON purchases(pdf_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_payment_id ON purchases(payment_id);
-CREATE INDEX IF NOT EXISTS idx_otps_mobile ON otps(mobile);
-CREATE INDEX IF NOT EXISTS idx_otps_expires_at ON otps(expires_at);
+-- CREATE INDEX IF NOT EXISTS idx_otps_mobile ON otps(mobile);
+-- CREATE INDEX IF NOT EXISTS idx_otps_expires_at ON otps(expires_at);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
