@@ -2,10 +2,6 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { JWTPayload } from '../types';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 export class AuthUtils {
   static async hashPassword(password: string): Promise<string> {

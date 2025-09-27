@@ -1,11 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import { SwaggerDefinition } from 'swagger-jsdoc';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
-
-console.log("🚀 SERVER_URL from env:", process.env.SERVER_URL);
 
 const swaggerDefinition: SwaggerDefinition = {
   openapi: '3.0.0',

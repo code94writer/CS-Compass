@@ -1,10 +1,6 @@
 // AWS S3 service disabled for basic functionality
 // import AWS from 'aws-sdk';
 import multer from 'multer';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 // import multerS3 from 'multer-s3';
 
 // AWS S3 service disabled for basic functionality

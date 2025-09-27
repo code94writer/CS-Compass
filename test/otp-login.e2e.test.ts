@@ -1,9 +1,5 @@
 import request from 'supertest';
 import app from '../src/index';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 describe('OTP Login Flow', () => {
   const validPhone = `8178540527`; // Use a fixed valid phone number for testing

@@ -1,8 +1,4 @@
 import winston from 'winston';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 const logFormat = winston.format.combine(
   winston.format.timestamp({

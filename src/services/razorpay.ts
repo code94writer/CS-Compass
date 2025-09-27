@@ -1,10 +1,6 @@
 // Razorpay service disabled for basic functionality
 // import Razorpay from 'razorpay';
 import { RazorpayOrder } from '../types';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 class RazorpayService {
   private razorpay: any = null;

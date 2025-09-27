@@ -3,10 +3,6 @@ import jwt from 'jsonwebtoken';
 import { JWTPayload } from '../types';
 import { UserModel } from '../models/User';
 import { UserSessionModel } from '../models/UserSession';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 export interface AuthRequest extends Request {
   user?: {

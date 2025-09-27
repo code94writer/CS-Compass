@@ -1,10 +1,11 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
-import dotenv from 'dotenv';
 
 // Import configurations
 import { swaggerSpec } from './config/swagger';
@@ -25,10 +26,6 @@ import { ResponseHelper } from './utils/response';
 // Ensure DB schema
 import { ensureDatabaseSchema } from './utils/ensureSchema';
 import { runMigrations } from './utils/runMigrations';
-
-// Load environment variables
-dotenv.config();
-
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -269,12 +266,13 @@ const server = app.listen(PORT, () => {
     environment: process.env.NODE_ENV || 'development',
     version: '1.0.0',
   });
-  
+  const apidocurl = process.env.NODE_ENV === 'production' ? `${process.env.SERVER_URL}/api-docs` : `http://localhost:${PORT}/api-docs`;
+  const healthurl = process.env.NODE_ENV === 'production' ? `${process.env.SERVER_URL}/health` : `http://localhost:${PORT}/health`;
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📚 CS Compass API v1.0.0`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📖 API Documentation: http://localhost:${PORT}/api-docs`);
-  console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+  console.log(`📖 API Documentation:  ${apidocurl}`);
+  console.log(`🏥 Health Check: ${healthurl}`);
 });
 
 export default app;
