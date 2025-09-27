@@ -1,4 +1,8 @@
 import twilio from 'twilio';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 class TwilioService {
   private client: any = null;
   private isConfigured: boolean = false;
