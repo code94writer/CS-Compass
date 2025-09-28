@@ -170,7 +170,7 @@ export class AdminController {
         return;
       }
 
-      const { name, description } = req.body;
+  const { name, description, parent_id } = req.body;
 
       // Check if category already exists
       const existingCategory = await CategoryModel.findByName(name);
@@ -179,7 +179,7 @@ export class AdminController {
         return;
       }
 
-      const category = await CategoryModel.create({ name, description });
+  const category = await CategoryModel.create({ name, description, parent_id });
 
       res.status(201).json({
         message: 'Category created successfully',
@@ -194,8 +194,8 @@ export class AdminController {
   // Update category
   static async updateCategory(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
-      const { name, description } = req.body;
+  const { id } = req.params;
+  const { name, description, parent_id } = req.body;
 
       const category = await CategoryModel.findById(id);
       if (!category) {
@@ -203,7 +203,7 @@ export class AdminController {
         return;
       }
 
-      const updatedCategory = await CategoryModel.update(id, { name, description });
+  const updatedCategory = await CategoryModel.update(id, { name, description, parent_id });
 
       res.json({
         message: 'Category updated successfully',

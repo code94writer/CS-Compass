@@ -37,6 +37,36 @@ const swaggerDefinition: SwaggerDefinition = {
       },
     },
     schemas: {
+      Category: {
+        type: 'object',
+        properties: {
+          id: {
+            type: 'string',
+            format: 'uuid',
+            description: 'Unique category identifier',
+          },
+          name: {
+            type: 'string',
+            description: 'Category name',
+          },
+          description: {
+            type: 'string',
+            description: 'Category description',
+          },
+          parent_id: {
+            type: 'string',
+            format: 'uuid',
+            nullable: true,
+            description: 'Parent category ID (null for top-level categories)',
+          },
+          created_at: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Category creation timestamp',
+          },
+        },
+        required: ['id', 'name', 'created_at'],
+      },
       User: {
         type: 'object',
         properties: {
@@ -93,9 +123,10 @@ const swaggerDefinition: SwaggerDefinition = {
             type: 'string',
             description: 'PDF description',
           },
-          category: {
+          category_id: {
             type: 'string',
-            description: 'PDF category',
+            format: 'uuid',
+            description: 'Category ID (references Category)',
           },
           price: {
             type: 'number',
@@ -138,7 +169,7 @@ const swaggerDefinition: SwaggerDefinition = {
             description: 'PDF last update timestamp',
           },
         },
-        required: ['id', 'title', 'description', 'category', 'price', 'file_url', 'file_size', 'is_active', 'uploaded_by', 'created_at', 'updated_at'],
+        required: ['id', 'title', 'description', 'category_id', 'price', 'file_url', 'file_size', 'is_active', 'uploaded_by', 'created_at', 'updated_at'],
       },
       Error: {
         type: 'object',

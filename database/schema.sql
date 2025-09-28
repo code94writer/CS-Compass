@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
+    parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -148,16 +149,21 @@ CREATE TRIGGER update_purchases_updated_at BEFORE UPDATE ON purchases
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert default categories
-INSERT INTO categories (name, description) VALUES 
-('Computer Science', 'Computer Science related PDFs'),
-('Mathematics', 'Mathematics and Statistics PDFs'),
-('Physics', 'Physics related PDFs'),
-('Chemistry', 'Chemistry related PDFs'),
-('Engineering', 'Engineering subjects PDFs'),
-('Programming', 'Programming and coding PDFs'),
-('Data Science', 'Data Science and Analytics PDFs'),
-('Other', 'Other educational materials')
-ON CONFLICT (name) DO NOTHING;
+
+-- Insert parent categories
+INSERT INTO categories (id, name, description, parent_id) VALUES
+    (1, 'UPSC Mains', 'UPSC Mains', NULL),
+    (2, 'UPSC Optional', 'UPSC Optional', NULL),
+    (3, 'UPPCS', 'UPPCS', NULL),
+    (4, 'Prelims Current Affairs', 'Prelims Current Affairs', NULL),
+    (5, 'Toppers Copies', 'Toppers Copies', NULL);
+
+-- Insert child categories (example hierarchy)
+INSERT INTO categories (id, name, description, parent_id) VALUES
+    (6, 'PSIR', 'PSIR', 2),
+    (7, 'GS 2', 'GS 2', 1),
+    (8, 'Ethics', 'Ethics', 1),
+    (9, 'Anthropology', 'Anthropology', 2);
 
 -- Insert default admin user (password: admin123)
 INSERT INTO users (email, mobile, password, is_verified, role) VALUES 

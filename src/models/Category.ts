@@ -5,11 +5,11 @@ export class CategoryModel {
   static async create(categoryData: Omit<Category, 'id' | 'created_at'>): Promise<Category> {
     try {
       const query = `
-        INSERT INTO categories (name, description)
-        VALUES ($1, $2)
+        INSERT INTO categories (name, description, parent_id)
+        VALUES ($1, $2, $3)
         RETURNING *
       `;
-      const values = [categoryData.name, categoryData.description];
+      const values = [categoryData.name, categoryData.description, categoryData.parent_id || null];
       const result = await pool.query(query, values);
       return result.rows[0];
     } catch (error) {

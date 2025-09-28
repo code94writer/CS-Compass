@@ -9,11 +9,13 @@ const router = Router();
 const createCategoryValidation = [
   body('name').notEmpty().trim(),
   body('description').optional().trim(),
+  body('parent_id').optional().isUUID().withMessage('parent_id must be a valid UUID or null'),
 ];
 
 const updateCategoryValidation = [
   body('name').optional().trim(),
   body('description').optional().trim(),
+  body('parent_id').optional().isUUID().withMessage('parent_id must be a valid UUID or null'),
 ];
 
 // All admin routes require authentication and admin role
@@ -104,6 +106,11 @@ router.get('/purchases', AdminController.getAllPurchases);
  *                 type: string
  *               description:
  *                 type: string
+ *               parent_id:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 description: Parent category ID (null for top-level)
  *     responses:
  *       201:
  *         description: Category created
@@ -139,6 +146,11 @@ router.post('/categories', createCategoryValidation, AdminController.createCateg
  *                 type: string
  *               description:
  *                 type: string
+ *               parent_id:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 description: Parent category ID (null for top-level)
  *     responses:
  *       200:
  *         description: Category updated
