@@ -13,7 +13,7 @@ export interface PDF {
   id: string;
   title: string;
   description: string;
-  category_id: string;
+  course_id: string;
   price: number;
   file_url: string;
   thumbnail_url?: string;
@@ -77,8 +77,8 @@ export interface WatermarkOptions {
 // Course-related types
 export interface CourseContent {
   pdfs?: string[]; // PDF IDs
+  videos?: string[]; // Video IDs
   folders?: string[]; // Folder names or IDs
-  videoUrls?: string[];
 }
 
 export interface Offer {
@@ -92,7 +92,8 @@ export interface Course {
   id?: string;
   name: string;
   description: string;
-  contents: CourseContent;
+  category_id: string;
+  contents?: CourseContent;
   aboutCreator: string;
   price: number;
   discount?: number;
@@ -101,4 +102,15 @@ export interface Course {
   createdBy: string;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface Video {
+  id: string;
+  course_id: string;
+  title: string;
+  video_url: string;
+  description?: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
 }

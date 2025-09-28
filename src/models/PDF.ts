@@ -5,14 +5,14 @@ export class PDFModel {
   static async create(pdfData: Omit<PDF, 'id' | 'created_at' | 'updated_at'>): Promise<PDF> {
     try {
       const query = `
-        INSERT INTO pdfs (title, description, category_id, price, file_url, thumbnail_url, file_size, is_active, uploaded_by)
+        INSERT INTO pdfs (title, description, course_id, price, file_url, thumbnail_url, file_size, is_active, uploaded_by)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `;
       const values = [
         pdfData.title,
         pdfData.description,
-        pdfData.category_id,
+        pdfData.course_id,
         pdfData.price,
         pdfData.file_url,
         pdfData.thumbnail_url,
@@ -27,13 +27,13 @@ export class PDFModel {
     }
   }
 
-  static async findAll(limit: number = 10, offset: number = 0, category_id?: string): Promise<PDF[]> {
+  static async findAll(limit: number = 10, offset: number = 0, course_id?: string): Promise<PDF[]> {
     try {
       let query = 'SELECT * FROM pdfs WHERE is_active = true';
       const values: any[] = [];
-      if (category_id) {
-        query += ' AND category_id = $1';
-        values.push(category_id);
+      if (course_id) {
+        query += ' AND course_id = $1';
+        values.push(course_id);
         query += ' ORDER BY created_at DESC LIMIT $2 OFFSET $3';
         values.push(limit, offset);
       } else {

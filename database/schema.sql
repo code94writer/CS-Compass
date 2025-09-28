@@ -30,13 +30,12 @@ CREATE TABLE IF NOT EXISTS categories (
 -- Index for quick lookup by name
 CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 
--- PDFs table
--- category_id now references categories(id) for normalization
+-- PDFs table (now linked to course, not category)
 CREATE TABLE IF NOT EXISTS pdfs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    category_id UUID NOT NULL REFERENCES categories(id),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
     price DECIMAL(10,2) NOT NULL,
     file_url TEXT NOT NULL,
     thumbnail_url TEXT,
@@ -65,12 +64,11 @@ CREATE TABLE IF NOT EXISTS purchases (
     CONSTRAINT unique_user_pdf UNIQUE (user_id, pdf_id)
 );
 
--- Courses table
 CREATE TABLE IF NOT EXISTS courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    contents JSONB NOT NULL, -- stores pdfs, folders, video URLs
+    category_id UUID NOT NULL REFERENCES categories(id),
     about_creator TEXT,
     price DECIMAL(10,2) NOT NULL,
     discount DECIMAL(5,2),
@@ -80,8 +78,18 @@ CREATE TABLE IF NOT EXISTS courses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- Videos table (linked to course)
+CREATE TABLE IF NOT EXISTS videos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    video_url TEXT NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- User-Course purchases table
 CREATE TABLE IF NOT EXISTS user_courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -89,11 +97,11 @@ CREATE TABLE IF NOT EXISTS user_courses (
     purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expiry_date TIMESTAMP,
     amount DECIMAL(10,2) NOT NULL,
-    payment_id VARCHAR(255) UNIQUE NOT NULL,
+    payment_id VARCHAR(255) NOT NULL,
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_user_course UNIQUE (user_id, course_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- Removed unique constraint to allow multiple purchases per user/course
 );
 
     -- OTPs table (for mobile OTP login/verification)

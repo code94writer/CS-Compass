@@ -10,14 +10,14 @@ const router = Router();
 const uploadPDFValidation = [
   body('title').notEmpty().trim(),
   body('description').optional().trim(),
-  body('category').notEmpty().trim(),
+  body('course_id').notEmpty().trim(),
   body('price').isFloat({ min: 0 }),
 ];
 
 const updatePDFValidation = [
   body('title').optional().trim(),
   body('description').optional().trim(),
-  body('category').optional().trim(),
+  body('course_id').optional().trim(),
   body('price').optional().isFloat({ min: 0 }),
   body('is_active').optional().isBoolean(),
 ];
@@ -109,7 +109,7 @@ router.get('/:id/preview', PDFController.getPDFPreview);
  *                 format: binary
  *               title:
  *                 type: string
- *               category:
+ *               course_id:
  *                 type: string
  *               price:
  *                 type: number
@@ -158,7 +158,7 @@ router.post('/upload',
  *             properties:
  *               title:
  *                 type: string
- *               category:
+ *               course_id:
  *                 type: string
  *               price:
  *                 type: number

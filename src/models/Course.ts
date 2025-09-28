@@ -6,7 +6,7 @@ class CourseModel {
   async createCourse(course: Course): Promise<Course> {
     const query = `
       INSERT INTO courses 
-        (name, description, contents, about_creator, price, discount, offer, expiry, created_by)
+        (name, description, category_id, about_creator, price, discount, offer, expiry, created_by)
       VALUES 
         ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *;
@@ -14,7 +14,7 @@ class CourseModel {
     const values = [
       course.name,
       course.description,
-      JSON.stringify(course.contents),
+      course.category_id,
       course.aboutCreator,
       course.price,
       course.discount,

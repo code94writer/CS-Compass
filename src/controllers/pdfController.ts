@@ -12,22 +12,18 @@ export class PDFController {
   // Get all PDFs (public - for browsing)
   static async getAllPDFs(req: Request, res: Response): Promise<void> {
     try {
-      const { page = 1, limit = 10, category, search } = req.query;
+      const { page = 1, limit = 10, course_id, search } = req.query;
       const offset = (Number(page) - 1) * Number(limit);
 
       let pdfs;
       if (search) {
         pdfs = await PDFModel.search(search as string, Number(limit), offset);
       } else {
-        pdfs = await PDFModel.findAll(Number(limit), offset, category as string);
+        pdfs = await PDFModel.findAll(Number(limit), offset, course_id as string);
       }
-
-      // Get categories for filter
-      const categories = await CategoryModel.findAll();
 
       res.json({
         pdfs,
-        categories,
         pagination: {
           page: Number(page),
           limit: Number(limit),
@@ -67,7 +63,11 @@ export class PDFController {
         return;
       }
 
-  const { title, description, category_id, price } = req.body;
+      const { title, description, course_id, price } = req.body;
+      if (!course_id) {
+        res.status(400).json({ error: 'course_id is required' });
+        return;
+      }
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
       if (!files.pdf || files.pdf.length === 0) {
@@ -91,7 +91,7 @@ export class PDFController {
       const pdf = await PDFModel.create({
         title,
         description,
-        category_id,
+        course_id,
         price: parseFloat(price),
         file_url: pdfUrl,
         thumbnail_url: thumbnailUrl,
@@ -114,7 +114,7 @@ export class PDFController {
   static async updatePDF(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-  const { title, description, category_id, price, is_active } = req.body;
+      const { title, description, course_id, price, is_active } = req.body;
 
       const pdf = await PDFModel.findById(id);
       if (!pdf) {
@@ -123,11 +123,11 @@ export class PDFController {
       }
 
       const updateData: any = {};
-  if (title) updateData.title = title;
-  if (description) updateData.description = description;
-  if (category_id) updateData.category_id = category_id;
-  if (price) updateData.price = parseFloat(price);
-  if (is_active !== undefined) updateData.is_active = is_active === 'true';
+      if (title) updateData.title = title;
+      if (description) updateData.description = description;
+      if (course_id) updateData.course_id = course_id;
+      if (price) updateData.price = parseFloat(price);
+      if (is_active !== undefined) updateData.is_active = is_active === 'true';
 
       const updatedPDF = await PDFModel.update(id, updateData);
 

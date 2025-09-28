@@ -17,8 +17,19 @@ class CourseController {
       }
       // @ts-ignore
       const user = req.user || { id: req.body.createdBy };
+      const { name, description, category_id, aboutCreator, price, discount, offer, expiry } = req.body;
+      if (!category_id) {
+        return ResponseHelper.validationError(res, 'category_id is required');
+      }
       const course: Course = {
-        ...req.body,
+        name,
+        description,
+        category_id,
+        aboutCreator,
+        price,
+        discount,
+        offer,
+        expiry,
         createdBy: user.id
       };
       const created = await CourseModel.createCourse(course);
@@ -33,7 +44,12 @@ class CourseController {
       const id = req.params.id;
       const course = await CourseModel.getCourseById(id);
       if (!course) return ResponseHelper.notFound(res, 'Course not found');
-      return ResponseHelper.success(res, course);
+      // Fetch PDFs and videos for this course
+      const [pdfs, videos] = await Promise.all([
+        (await import('../models/PDF')).PDFModel.findAll(100, 0, id),
+        (await import('../models/Video')).default.findByCourseId(id)
+      ]);
+      return ResponseHelper.success(res, { ...course, pdfs, videos });
     } catch (err) {
       return next(err);
     }
@@ -42,7 +58,15 @@ class CourseController {
   async getAllCourses(req: Request, res: Response, next: NextFunction) {
     try {
       const courses = await CourseModel.getAllCourses();
-      return ResponseHelper.success(res, courses);
+      // For each course, fetch PDFs and videos
+      const results = await Promise.all(courses.map(async (course: any) => {
+        const [pdfs, videos] = await Promise.all([
+          (await import('../models/PDF')).PDFModel.findAll(100, 0, course.id),
+          (await import('../models/Video')).default.findByCourseId(course.id)
+        ]);
+        return { ...course, pdfs, videos };
+      }));
+      return ResponseHelper.success(res, results);
     } catch (err) {
       return next(err);
     }
@@ -104,15 +128,11 @@ class CourseController {
         return ResponseHelper.error(res, 'No access or course expired', 403);
       }
       // Find the PDF and check if it belongs to the course
-      const course = await CourseModel.getCourseById(courseId);
-      if (!course) return ResponseHelper.notFound(res, 'Course not found');
-      const pdfIds = Array.isArray(course.contents.pdfs) ? course.contents.pdfs : [];
-      if (!pdfIds.includes(pdfId)) {
-        return ResponseHelper.error(res, 'PDF not part of this course', 404);
-      }
-      // Get PDF details
       const pdf = await (await import('../models/PDF')).PDFModel.findById(pdfId);
       if (!pdf) return ResponseHelper.notFound(res, 'PDF not found');
+      if (pdf.course_id !== courseId) {
+        return ResponseHelper.error(res, 'PDF not part of this course', 404);
+      }
       // Read PDF file (local only for now)
       const fs = await import('fs/promises');
       const path = await import('path');
