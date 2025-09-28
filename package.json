@@ -10,8 +10,8 @@
   "test": "jest --runInBand",
   "test-setup": "node scripts/test-setup.js",
   "setup-db": "./scripts/setup-db.sh",
-  "migrate": "echo 'Migration automation disabled'",
-  "migrate:create": "echo 'Migration automation disabled'",
+  "migrate": "node-pg-migrate up",
+  "migrate:create": "node-pg-migrate create",
   "prestart": "npm run migrate",
   "postinstall": "npm run migrate"
   },

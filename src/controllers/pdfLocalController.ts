@@ -25,7 +25,7 @@ export class PDFLocalController {
       const pdfData = {
         title: req.body.title || fileName,
         description: req.body.description || '',
-        category_id: req.body.category_id || '',
+        course_id: req.body.course_id || '',
         price: Number(req.body.price) || 0,
         file_url: `uploads/local/${fileName}`,
         thumbnail_url: thumbnailRelPath,
