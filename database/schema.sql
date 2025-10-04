@@ -40,6 +40,22 @@ CREATE TABLE IF NOT EXISTS categories (
 -- Index for quick lookup by name
 CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
 
+-- Courses table (must be created before PDFs and Videos)
+CREATE TABLE IF NOT EXISTS courses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    category_id UUID NOT NULL REFERENCES categories(id),
+    about_creator TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    discount DECIMAL(5,2),
+    offer JSONB,
+    expiry TIMESTAMP,
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- PDFs table (now linked to course, not category)
 CREATE TABLE IF NOT EXISTS pdfs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,20 +75,6 @@ CREATE TABLE IF NOT EXISTS pdfs (
 CREATE INDEX IF NOT EXISTS idx_pdfs_uploaded_by ON pdfs(uploaded_by);
 CREATE INDEX IF NOT EXISTS idx_pdfs_is_active ON pdfs(is_active);
 
-CREATE TABLE IF NOT EXISTS courses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    category_id UUID NOT NULL REFERENCES categories(id),
-    about_creator TEXT,
-    price DECIMAL(10,2) NOT NULL,
-    discount DECIMAL(5,2),
-    offer JSONB,
-    expiry TIMESTAMP,
-    created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 -- Videos table (linked to course)
 CREATE TABLE IF NOT EXISTS videos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
