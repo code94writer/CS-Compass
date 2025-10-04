@@ -38,7 +38,62 @@ class CourseModel {
     return rows;
   }
 
-  // Add more methods as needed (update, delete, etc.)
+  async updateCourse(id: string, updates: Partial<Course>): Promise<Course | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let paramCount = 1;
+
+    // Build dynamic update query
+    if (updates.name !== undefined) {
+      fields.push(`name = $${paramCount++}`);
+      values.push(updates.name);
+    }
+    if (updates.description !== undefined) {
+      fields.push(`description = $${paramCount++}`);
+      values.push(updates.description);
+    }
+    if (updates.category_id !== undefined) {
+      fields.push(`category_id = $${paramCount++}`);
+      values.push(updates.category_id);
+    }
+    if (updates.aboutCreator !== undefined) {
+      fields.push(`about_creator = $${paramCount++}`);
+      values.push(updates.aboutCreator);
+    }
+    if (updates.price !== undefined) {
+      fields.push(`price = $${paramCount++}`);
+      values.push(updates.price);
+    }
+    if (updates.discount !== undefined) {
+      fields.push(`discount = $${paramCount++}`);
+      values.push(updates.discount);
+    }
+    if (updates.offer !== undefined) {
+      fields.push(`offer = $${paramCount++}`);
+      values.push(updates.offer ? JSON.stringify(updates.offer) : null);
+    }
+    if (updates.expiry !== undefined) {
+      fields.push(`expiry = $${paramCount++}`);
+      values.push(updates.expiry);
+    }
+
+    if (fields.length === 0) {
+      return null; // No fields to update
+    }
+
+    values.push(id);
+    const query = `
+      UPDATE courses
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $${paramCount}
+      RETURNING *;
+    `;
+
+    const { rows } = await pool.query(query, values);
+    return rows[0] || null;
+  }
+
+  // Add more methods as needed (delete, etc.)
 }
 
 export default new CourseModel();

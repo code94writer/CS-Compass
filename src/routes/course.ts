@@ -112,8 +112,10 @@ router.post(
   '/',
   authenticateToken,
   body('name').isString().notEmpty(),
+  body('category_id').isString().notEmpty(),
   body('description').isString().notEmpty(),
-  body('contents').isObject(),
+  //contents is optional
+  body('contents').optional().isObject(),
   body('aboutCreator').isString().notEmpty(),
   body('price').isNumeric(),
   courseController.createCourse

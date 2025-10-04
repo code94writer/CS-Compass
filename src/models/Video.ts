@@ -34,6 +34,56 @@ export class VideoModel {
     const { rows } = await pool.query(query, [courseId]);
     return rows;
   }
+
+  static async findById(id: string): Promise<Video | null> {
+    const query = 'SELECT * FROM videos WHERE id = $1';
+    const { rows } = await pool.query(query, [id]);
+    return rows[0] || null;
+  }
+
+  static async update(id: string, updates: Partial<Video>): Promise<Video | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let paramCount = 1;
+
+    if (updates.title !== undefined) {
+      fields.push(`title = $${paramCount++}`);
+      values.push(updates.title);
+    }
+    if (updates.video_url !== undefined) {
+      fields.push(`video_url = $${paramCount++}`);
+      values.push(updates.video_url);
+    }
+    if (updates.description !== undefined) {
+      fields.push(`description = $${paramCount++}`);
+      values.push(updates.description);
+    }
+    if (updates.is_active !== undefined) {
+      fields.push(`is_active = $${paramCount++}`);
+      values.push(updates.is_active);
+    }
+
+    if (fields.length === 0) {
+      return null;
+    }
+
+    values.push(id);
+    const query = `
+      UPDATE videos
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $${paramCount}
+      RETURNING *;
+    `;
+
+    const { rows } = await pool.query(query, values);
+    return rows[0] || null;
+  }
+
+  static async delete(id: string): Promise<boolean> {
+    const query = 'DELETE FROM videos WHERE id = $1';
+    const { rowCount } = await pool.query(query, [id]);
+    return (rowCount || 0) > 0;
+  }
 }
 
 export default VideoModel;

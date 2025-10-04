@@ -17,6 +17,7 @@ import pdfRoutes from './routes/pdf';
 import adminRoutes from './routes/admin';
 import pdfLocalRoutes from './routes/pdfLocal';
 import courseRoutes from './routes/course';
+import categoryRoutes from './routes/category';
 
 
 // Import utilities
@@ -156,6 +157,7 @@ app.use('/api/pdfs', pdfRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/pdfs', pdfLocalRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

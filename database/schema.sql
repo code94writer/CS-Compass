@@ -170,6 +170,34 @@ SELECT 'Anthropology', 'Anthropology', id FROM categories WHERE name = 'UPSC Opt
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert default admin user (password: admin123)
-INSERT INTO users (email, mobile, password, is_verified, role) VALUES 
+INSERT INTO users (email, mobile, password, is_verified, role) VALUES
 ('admin@cscompass.com', '+1234567890', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', true, 'admin')
 ON CONFLICT (email) DO NOTHING;
+
+-- Insert 2 default courses (empty - no PDFs or videos initially)
+-- These courses will be created using the default admin user and default categories
+INSERT INTO courses (name, description, category_id, about_creator, price, discount, created_by)
+SELECT
+  'Introduction to UPSC Preparation',
+  'A comprehensive guide to getting started with UPSC preparation. This course covers the basics and helps you understand the exam pattern.',
+  c.id,
+  'CS Compass Team - Expert educators with years of experience in UPSC coaching',
+  0.00,
+  0.00,
+  u.id
+FROM categories c, users u
+WHERE c.name = 'UPSC Mains' AND u.email = 'admin@cscompass.com'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO courses (name, description, category_id, about_creator, price, discount, created_by)
+SELECT
+  'Current Affairs Essentials',
+  'Stay updated with the latest current affairs essential for UPSC Prelims. This course is regularly updated with important news and analysis.',
+  c.id,
+  'CS Compass Team - Expert educators with years of experience in UPSC coaching',
+  0.00,
+  0.00,
+  u.id
+FROM categories c, users u
+WHERE c.name = 'Prelims Current Affairs' AND u.email = 'admin@cscompass.com'
+ON CONFLICT DO NOTHING;

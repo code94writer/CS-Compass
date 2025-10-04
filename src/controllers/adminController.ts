@@ -5,6 +5,11 @@ import { CategoryModel } from '../models/Category';
 import { UserModel } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import pool from '../config/database';
+import CourseModel from '../models/Course';
+import VideoModel from '../models/Video';
+import path from 'path';
+import { generateThumbnail } from '../services/pdfThumbnail';
+import { ensureLocalFolders } from '../services/pdfLocal';
 
 export class AdminController {
   // Get all PDFs for admin management
@@ -251,6 +256,238 @@ export class AdminController {
       });
     } catch (error) {
       console.error('Get dashboard stats error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Create course (admin only)
+  static async createCourse(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const { name, description, category_id, aboutCreator, price, discount, offer, expiry } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const course = await CourseModel.createCourse({
+        name,
+        description,
+        category_id,
+        aboutCreator,
+        price,
+        discount,
+        offer,
+        expiry,
+        createdBy: userId
+      });
+
+      res.status(201).json({
+        message: 'Course created successfully',
+        course,
+      });
+    } catch (error) {
+      console.error('Create course error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Update course (admin only)
+  static async updateCourse(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+
+      const course = await CourseModel.getCourseById(id);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      const updatedCourse = await CourseModel.updateCourse(id, updates);
+
+      res.json({
+        message: 'Course updated successfully',
+        course: updatedCourse,
+      });
+    } catch (error) {
+      console.error('Update course error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Upload PDF to course (admin only)
+  static async uploadCoursePDF(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      ensureLocalFolders();
+
+      if (!req.file) {
+        res.status(400).json({ error: 'No PDF file uploaded' });
+        return;
+      }
+
+      const { courseId } = req.params;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      const file = req.file;
+      const pdfPath = file.path;
+      const fileName = path.basename(pdfPath);
+      const fileSize = file.size;
+      const uploadedBy = req.user?.id || 'unknown';
+
+      // Generate thumbnail
+      const thumbName = fileName.replace(/\.pdf$/i, '');
+      const thumbnailRelPath = await generateThumbnail(pdfPath, thumbName);
+
+      // Save to DB
+      const pdfData = {
+        title: req.body.title || fileName,
+        description: req.body.description || '',
+        course_id: courseId,
+        file_url: `uploads/local/${fileName}`,
+        thumbnail_url: thumbnailRelPath,
+        file_size: fileSize,
+        is_active: true,
+        uploaded_by: uploadedBy
+      };
+
+      const pdf = await PDFModel.create(pdfData);
+
+      res.status(201).json({
+        message: 'PDF uploaded successfully',
+        pdf,
+      });
+    } catch (error) {
+      console.error('Upload course PDF error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Add video to course (admin only)
+  static async addCourseVideo(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const { courseId } = req.params;
+      const { title, video_url, description } = req.body;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      const video = await VideoModel.create({
+        course_id: courseId,
+        title,
+        video_url,
+        description,
+        is_active: true
+      });
+
+      res.status(201).json({
+        message: 'Video added successfully',
+        video,
+      });
+    } catch (error) {
+      console.error('Add course video error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Update video in course (admin only)
+  static async updateCourseVideo(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { courseId, videoId } = req.params;
+      const updates = req.body;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      // Verify video exists and belongs to course
+      const video = await VideoModel.findById(videoId);
+      if (!video) {
+        res.status(404).json({ error: 'Video not found' });
+        return;
+      }
+
+      if (video.course_id !== courseId) {
+        res.status(400).json({ error: 'Video does not belong to this course' });
+        return;
+      }
+
+      const updatedVideo = await VideoModel.update(videoId, updates);
+
+      res.json({
+        message: 'Video updated successfully',
+        video: updatedVideo,
+      });
+    } catch (error) {
+      console.error('Update course video error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Get all purchases for a course (admin only)
+  static async getCoursePurchases(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { courseId } = req.params;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      // Get all purchases for this course
+      const query = `
+        SELECT
+          uc.*,
+          u.email as user_email,
+          u.mobile as user_mobile,
+          u.id as user_id
+        FROM user_courses uc
+        JOIN users u ON uc.user_id = u.id
+        WHERE uc.course_id = $1
+        ORDER BY uc.created_at DESC
+      `;
+
+      const result = await pool.query(query, [courseId]);
+
+      res.json({
+        message: 'Course purchases retrieved successfully',
+        course: {
+          id: course.id,
+          name: course.name
+        },
+        purchases: result.rows,
+        total: result.rows.length
+      });
+    } catch (error) {
+      console.error('Get course purchases error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
