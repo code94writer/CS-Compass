@@ -26,7 +26,6 @@ export class PDFLocalController {
         title: req.body.title || fileName,
         description: req.body.description || '',
         course_id: req.body.course_id || '',
-        price: Number(req.body.price) || 0,
         file_url: `uploads/local/${fileName}`,
         thumbnail_url: thumbnailRelPath,
         file_size: fileSize,

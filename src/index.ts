@@ -14,7 +14,6 @@ import logger from './config/logger';
 // Import routes
 import authRoutes from './routes/auth';
 import pdfRoutes from './routes/pdf';
-import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
 import pdfLocalRoutes from './routes/pdfLocal';
 import courseRoutes from './routes/course';
@@ -26,6 +25,7 @@ import { ResponseHelper } from './utils/response';
 // Ensure DB schema
 import { ensureDatabaseSchema } from './utils/ensureSchema';
 import { runMigrations } from './utils/runMigrations';
+import { ensureLocalFolders } from './services/pdfLocal';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -142,7 +142,6 @@ app.get('/health', (req, res) => {
       external_services: {
         twilio: 'disabled',
         razorpay: 'disabled',
-        s3: 'disabled',
       },
     },
   };
@@ -154,7 +153,6 @@ app.get('/health', (req, res) => {
 // API routes with rate limiting
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/pdfs', pdfRoutes);
-app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/pdfs', pdfLocalRoutes);
 app.use('/api/courses', courseRoutes);
@@ -164,12 +162,12 @@ app.get('/', (req, res) => {
   const apiInfo = {
     name: 'CS Compass API',
     version: '1.0.0',
-    description: 'A comprehensive PDF marketplace API for students and educators',
+    description: 'A comprehensive course marketplace API for students and educators',
     documentation: '/api-docs',
     endpoints: {
       auth: '/api/auth',
       pdfs: '/api/pdfs',
-      payments: '/api/payments',
+      courses: '/api/courses',
       admin: '/api/admin',
       health: '/health',
       docs: '/api-docs',
@@ -259,6 +257,10 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 console.log("new changes")
+
+// Ensure local upload folders exist
+ensureLocalFolders();
+
 // Start server
 const server = app.listen(PORT, () => {
   logger.info('Server started', {

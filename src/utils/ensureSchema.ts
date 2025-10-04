@@ -7,7 +7,7 @@ import path from 'path';
  */
 export async function ensureDatabaseSchema() {
   // List of required tables (add more as needed)
-  const requiredTables = ['users', 'categories', 'pdfs', 'purchases'];
+  const requiredTables = ['users', 'categories', 'pdfs', 'otps', 'courses', 'videos', 'user_courses'];
   const client = await pool.connect();
   try {
     // Check if all required tables exist

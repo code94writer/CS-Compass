@@ -79,6 +79,38 @@ const updateProfileValidation = [
   body('email').optional().isEmail().normalizeEmail(),
 ];
 
+const requestAdminPasswordUpdateValidation = [
+  body('emailOrPhone')
+    .notEmpty().withMessage('Email or phone number is required')
+    .custom((value) => {
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+      const phoneRegex = /^(\+91|91)?[6-9][0-9]{9}$/;
+      if (emailRegex.test(value) || phoneRegex.test(value)) {
+        return true;
+      }
+      throw new Error('Enter a valid email or Indian phone number');
+    }),
+];
+
+const updateAdminPasswordValidation = [
+  body('emailOrPhone')
+    .notEmpty().withMessage('Email or phone number is required')
+    .custom((value) => {
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+      const phoneRegex = /^(\+91|91)?[6-9][0-9]{9}$/;
+      if (emailRegex.test(value) || phoneRegex.test(value)) {
+        return true;
+      }
+      throw new Error('Enter a valid email or Indian phone number');
+    }),
+  body('otp')
+    .notEmpty().withMessage('OTP is required')
+    .isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
+  body('newPassword')
+    .notEmpty().withMessage('New password is required')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+];
+
 // Routes with Swagger documentation
 
 /**
@@ -349,5 +381,97 @@ router.put('/profile', authenticateToken, validate(updateProfileValidation), Aut
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/logout', authenticateToken, AuthController.logout);
+
+/**
+ * @swagger
+ * /api/auth/admin/request-password-update:
+ *   post:
+ *     summary: Request admin password update (sends OTP)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - emailOrPhone
+ *             properties:
+ *               emailOrPhone:
+ *                 type: string
+ *                 description: Admin email address or phone number
+ *                 example: admin@cscompass.com
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/admin/request-password-update', validate(requestAdminPasswordUpdateValidation), AuthController.requestAdminPasswordUpdate);
+
+/**
+ * @swagger
+ * /api/auth/admin/update-password:
+ *   post:
+ *     summary: Update admin password with OTP verification
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - emailOrPhone
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               emailOrPhone:
+ *                 type: string
+ *                 description: Admin email address or phone number
+ *                 example: admin@cscompass.com
+ *               otp:
+ *                 type: string
+ *                 pattern: '^\d{6}$'
+ *                 example: '123456'
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: NewSecurePass123!
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ *       400:
+ *         description: Validation error or invalid OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/admin/update-password', validate(updateAdminPasswordValidation), AuthController.updateAdminPassword);
 
 export default router;

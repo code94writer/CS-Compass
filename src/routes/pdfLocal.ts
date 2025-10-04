@@ -20,8 +20,6 @@
  *                 type: string
  *               category:
  *                 type: string
- *               price:
- *                 type: number
  *               description:
  *                 type: string
  *     responses:
@@ -57,7 +55,6 @@ const router = Router();
 const uploadLocalPDFValidation = [
   body('title').notEmpty().trim(),
   body('category').notEmpty().trim(),
-  body('price').isFloat({ min: 0 }),
 ];
 
 /**
@@ -82,8 +79,6 @@ const uploadLocalPDFValidation = [
  *                 type: string
  *               category:
  *                 type: string
- *               price:
- *                 type: number
  *               description:
  *                 type: string
  *     responses:

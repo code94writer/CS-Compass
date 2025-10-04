@@ -12,23 +12,14 @@ Before starting, ensure you have the following installed:
 
 ## External Services Setup
 
-### 1. AWS S3 Setup
-1. Create an AWS account at [aws.amazon.com](https://aws.amazon.com)
-2. Go to S3 service and create a new bucket
-3. Note down your:
-   - AWS Access Key ID
-   - AWS Secret Access Key
-   - Region (e.g., us-east-1)
-   - Bucket name
-
-### 2. Razorpay Setup
+### 1. Razorpay Setup (Optional)
 1. Create a Razorpay account at [razorpay.com](https://razorpay.com)
 2. Go to Settings > API Keys
 3. Generate API keys and note down:
    - Key ID
    - Key Secret
 
-### 3. Twilio Setup
+### 2. Twilio Setup (Optional)
 1. Create a Twilio account at [twilio.com](https://twilio.com)
 2. Get a phone number for SMS
 3. Note down your:
@@ -76,13 +67,7 @@ DB_PASSWORD=your_postgres_password
 JWT_SECRET=your_super_secret_jwt_key_here_make_it_long_and_random
 JWT_EXPIRES_IN=7d
 
-# AWS S3 Configuration
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_REGION=us-east-1
-S3_BUCKET_NAME=your-bucket-name
-
-# Razorpay Configuration
+# Razorpay Configuration (Optional)
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 
@@ -206,10 +191,10 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/auth/profile
    - Run `npm run test-setup` to check for issues
    - Ensure all dependencies are installed: `npm install`
 
-3. **AWS S3 Upload Errors**
-   - Verify AWS credentials
-   - Check bucket permissions
-   - Ensure bucket exists and is accessible
+3. **File Upload Errors**
+   - Ensure uploads/local/ and uploads/thumbnails/ directories exist
+   - Check file permissions on upload directories
+   - Verify disk space is available
 
 4. **Razorpay Payment Errors**
    - Verify API keys are correct
@@ -230,8 +215,8 @@ npm run dev
 # Check database connection
 psql -d cs_compass -c "SELECT version();"
 
-# Test external services
-node -e "console.log('Testing AWS S3...'); require('./src/services/s3');"
+# Verify upload directories exist
+ls -la uploads/local uploads/thumbnails
 ```
 
 ## Production Deployment

@@ -26,6 +26,18 @@ class UserCourseModel {
   }
 
   async hasAccess(userId: string, courseId: string): Promise<boolean> {
+    // Check if course is free (price = 0)
+    const courseQuery = `
+      SELECT price FROM courses WHERE id = $1
+    `;
+    const courseResult = await pool.query(courseQuery, [courseId]);
+
+    if (courseResult.rows.length > 0 && courseResult.rows[0].price === 0) {
+      // Free course - allow access to all users
+      return true;
+    }
+
+    // Paid course - check if user has purchased it
     const query = `
       SELECT 1 FROM user_courses
       WHERE user_id = $1 AND course_id = $2
@@ -33,8 +45,8 @@ class UserCourseModel {
         AND status = 'completed'
       LIMIT 1;
     `;
-  const { rowCount } = await pool.query(query, [userId, courseId]);
-  return (rowCount || 0) > 0;
+    const { rowCount } = await pool.query(query, [userId, courseId]);
+    return (rowCount || 0) > 0;
   }
 }
 

@@ -1,35 +1,40 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { PDFController } from '../controllers/pdfController';
-import { authenticateToken, optionalAuth, requireAdmin } from '../middleware/auth';
-import S3Service from '../services/s3';
+import { authenticateToken, requireAdmin } from '../middleware/auth';
+import multer from 'multer';
 
 const router = Router();
+
+// Configure multer for memory storage (files will be saved to disk in controller)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE || '50000000'), // 50MB
+  },
+  fileFilter: (_req, file, cb) => {
+    if (file.fieldname === 'pdf' && file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else if (file.fieldname === 'thumbnail' && file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type') as any, false);
+    }
+  },
+});
 
 // Validation rules
 const uploadPDFValidation = [
   body('title').notEmpty().trim(),
   body('description').optional().trim(),
   body('course_id').notEmpty().trim(),
-  body('price').isFloat({ min: 0 }),
 ];
 
 const updatePDFValidation = [
   body('title').optional().trim(),
   body('description').optional().trim(),
   body('course_id').optional().trim(),
-  body('price').optional().isFloat({ min: 0 }),
   body('is_active').optional().isBoolean(),
-];
-
-const createOrderValidation = [
-  body('pdfId').isUUID(),
-];
-
-const verifyPaymentValidation = [
-  body('paymentId').notEmpty(),
-  body('orderId').notEmpty(),
-  body('signature').notEmpty(),
 ];
 
 // Public routes (no authentication required)
@@ -111,8 +116,6 @@ router.get('/:id/preview', PDFController.getPDFPreview);
  *                 type: string
  *               course_id:
  *                 type: string
- *               price:
- *                 type: number
  *               description:
  *                 type: string
  *     responses:
@@ -123,10 +126,10 @@ router.get('/:id/preview', PDFController.getPDFPreview);
  *       401:
  *         description: Unauthorized
  */
-router.post('/upload', 
-  authenticateToken, 
+router.post('/upload',
+  authenticateToken,
   requireAdmin,
-  S3Service.upload.fields([
+  upload.fields([
     { name: 'pdf', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 }
   ]),
@@ -230,21 +233,5 @@ router.delete('/:id', authenticateToken, requireAdmin, PDFController.deletePDF);
  *         description: PDF not found
  */
 router.get('/:id/download', authenticateToken, PDFController.downloadPDF);
-/**
- * @swagger
- * /api/pdfs/user/purchases:
- *   get:
- *     summary: Get all PDFs purchased by the user
- *     tags: [PDFs]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of purchased PDFs
- *       401:
- *         description: Unauthorized
- */
-router.get('/user/purchases', authenticateToken, PDFController.getUserPurchases);
-
 
 export default router;

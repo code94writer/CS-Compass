@@ -23,13 +23,13 @@ A comprehensive web application backend for students to browse, purchase, and do
 - **JWT Authentication**: Secure token-based authentication
 - **Rate Limiting**: Protection against abuse
 - **Input Validation**: Comprehensive request validation
-- **File Upload Security**: Secure file handling with AWS S3
+- **File Upload Security**: Secure local file handling
 
 ## Tech Stack
 
 - **Backend**: Node.js, Express.js, TypeScript
 - **Database**: PostgreSQL
-- **File Storage**: AWS S3
+- **File Storage**: Local file system
 - **Payment**: Razorpay
 - **SMS**: Twilio
 - **PDF Processing**: pdf-lib
@@ -39,9 +39,8 @@ A comprehensive web application backend for students to browse, purchase, and do
 
 - Node.js (v16 or higher)
 - PostgreSQL (v12 or higher)
-- AWS S3 bucket
-- Razorpay account
-- Twilio account
+- Razorpay account (optional)
+- Twilio account (optional)
 
 ## Installation
 
@@ -77,12 +76,6 @@ A comprehensive web application backend for students to browse, purchase, and do
    # JWT Configuration
    JWT_SECRET=your_jwt_secret_key_here
    JWT_EXPIRES_IN=7d
-
-   # AWS S3 Configuration
-   AWS_ACCESS_KEY_ID=your_aws_access_key
-   AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-   AWS_REGION=us-east-1
-   S3_BUCKET_NAME=cs-compass-pdfs
 
    # Razorpay Configuration
    RAZORPAY_KEY_ID=your_razorpay_key_id
@@ -204,7 +197,7 @@ src/
 
 4. **Set up database** (PostgreSQL instance)
 
-5. **Configure AWS S3** for file storage
+5. **Ensure upload directories exist** on the server
 
 ## Database Migrations (Automated)
 

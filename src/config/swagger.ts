@@ -128,12 +128,6 @@ const swaggerDefinition: SwaggerDefinition = {
             format: 'uuid',
             description: 'Course ID (references Course)',
           },
-          price: {
-            type: 'number',
-            format: 'float',
-            minimum: 0,
-            description: 'PDF price in INR',
-          },
           file_url: {
             type: 'string',
             format: 'uri',
@@ -151,7 +145,7 @@ const swaggerDefinition: SwaggerDefinition = {
           },
           is_active: {
             type: 'boolean',
-            description: 'Whether the PDF is active for purchase',
+            description: 'Whether the PDF is active',
           },
           uploaded_by: {
             type: 'string',

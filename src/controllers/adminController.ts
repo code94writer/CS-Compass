@@ -3,7 +3,6 @@ import { body, validationResult } from 'express-validator';
 import { PDFModel } from '../models/PDF';
 import { CategoryModel } from '../models/Category';
 import { UserModel } from '../models/User';
-import { PurchaseModel } from '../models/Purchase';
 import { AuthRequest } from '../middleware/auth';
 import pool from '../config/database';
 
@@ -110,56 +109,7 @@ export class AdminController {
     }
   }
 
-  // Get all purchases
-  static async getAllPurchases(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const { page = 1, limit = 10, status } = req.query;
-      const offset = (Number(page) - 1) * Number(limit);
 
-      let query = `
-        SELECT p.*, u.email as user_email, u.mobile as user_mobile, 
-               pdf.title as pdf_title, pdf.price as pdf_price
-        FROM purchases p
-        JOIN users u ON p.user_id = u.id
-        JOIN pdfs pdf ON p.pdf_id = pdf.id
-      `;
-      const values: any[] = [];
-      let paramCount = 0;
-
-      if (status) {
-        paramCount++;
-        query += ` WHERE p.status = $${paramCount}`;
-        values.push(status);
-      }
-
-      query += ` ORDER BY p.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
-      values.push(Number(limit), offset);
-
-      const result = await pool.query(query, values);
-      const purchases = result.rows;
-
-      // Get total count
-      let countQuery = 'SELECT COUNT(*) FROM purchases p';
-      if (status) {
-        countQuery += ' WHERE p.status = $1';
-      }
-      const countResult = await pool.query(countQuery, status ? [status] : []);
-      const total = parseInt(countResult.rows[0].count);
-
-      res.json({
-        purchases,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total,
-          pages: Math.ceil(total / Number(limit)),
-        },
-      });
-    } catch (error) {
-      console.error('Get admin purchases error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  }
 
   // Create category
   static async createCategory(req: AuthRequest, res: Response): Promise<void> {
@@ -255,31 +205,35 @@ export class AdminController {
       const pdfsResult = await pool.query('SELECT COUNT(*) FROM pdfs');
       const totalPDFs = parseInt(pdfsResult.rows[0].count);
 
-      // Get total revenue
+      // Get total courses
+      const coursesResult = await pool.query('SELECT COUNT(*) FROM courses');
+      const totalCourses = parseInt(coursesResult.rows[0].count);
+
+      // Get total revenue from course purchases
       const revenueResult = await pool.query(`
-        SELECT SUM(amount) as total_revenue 
-        FROM purchases 
+        SELECT SUM(amount) as total_revenue
+        FROM user_courses
         WHERE status = 'completed'
       `);
       const totalRevenue = parseFloat(revenueResult.rows[0].total_revenue || 0);
 
-      // Get recent purchases
+      // Get recent course purchases
       const recentPurchases = await pool.query(`
-        SELECT p.*, u.email as user_email, pdf.title as pdf_title
-        FROM purchases p
-        JOIN users u ON p.user_id = u.id
-        JOIN pdfs pdf ON p.pdf_id = pdf.id
-        ORDER BY p.created_at DESC
+        SELECT uc.*, u.email as user_email, c.name as course_name
+        FROM user_courses uc
+        JOIN users u ON uc.user_id = u.id
+        JOIN courses c ON uc.course_id = c.id
+        ORDER BY uc.created_at DESC
         LIMIT 5
       `);
 
       // Get monthly revenue (last 6 months)
       const monthlyRevenue = await pool.query(`
-        SELECT 
+        SELECT
           DATE_TRUNC('month', created_at) as month,
           SUM(amount) as revenue
-        FROM purchases 
-        WHERE status = 'completed' 
+        FROM user_courses
+        WHERE status = 'completed'
         AND created_at >= NOW() - INTERVAL '6 months'
         GROUP BY DATE_TRUNC('month', created_at)
         ORDER BY month DESC
@@ -289,6 +243,7 @@ export class AdminController {
         stats: {
           totalUsers,
           totalPDFs,
+          totalCourses,
           totalRevenue,
         },
         recentPurchases: recentPurchases.rows,

@@ -14,23 +14,11 @@ export interface PDF {
   title: string;
   description: string;
   course_id: string;
-  price: number;
   file_url: string;
   thumbnail_url?: string;
   file_size: number;
   is_active: boolean;
   uploaded_by: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-export interface Purchase {
-  id: string;
-  user_id: string;
-  pdf_id: string;
-  amount: number;
-  payment_id: string;
-  status: 'pending' | 'completed' | 'failed' | 'refunded';
   created_at: Date;
   updated_at: Date;
 }

@@ -5,15 +5,14 @@ export class PDFModel {
   static async create(pdfData: Omit<PDF, 'id' | 'created_at' | 'updated_at'>): Promise<PDF> {
     try {
       const query = `
-        INSERT INTO pdfs (title, description, course_id, price, file_url, thumbnail_url, file_size, is_active, uploaded_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO pdfs (title, description, course_id, file_url, thumbnail_url, file_size, is_active, uploaded_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *
       `;
       const values = [
         pdfData.title,
         pdfData.description,
         pdfData.course_id,
-        pdfData.price,
         pdfData.file_url,
         pdfData.thumbnail_url,
         pdfData.file_size,

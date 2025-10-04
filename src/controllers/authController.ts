@@ -189,6 +189,7 @@ export class AuthController {
         // Find user by mobile
         user = await UserModel.findByMobile(emailOrPhone);
       }
+      console.log(user);
 
       if (!user) {
         res.status(401).json({ error: 'Invalid credentials' });
@@ -204,6 +205,7 @@ export class AuthController {
         }
         // Verify password
         const isPasswordValid = await AuthUtils.comparePassword(password, user.password);
+        console.log(password, user.password, isPasswordValid);
         if (!isPasswordValid) {
           res.status(401).json({ error: 'Invalid credentials' });
           return;
@@ -308,5 +310,145 @@ export class AuthController {
   // Logout (client-side token removal)
   static async logout(req: AuthRequest, res: Response): Promise<void> {
     res.json({ message: 'Logout successful' });
+  }
+
+  // Request admin password update - sends OTP
+  static async requestAdminPasswordUpdate(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const { emailOrPhone } = req.body;
+
+      // Determine if input is email or phone
+      const isEmail = emailOrPhone.includes('@');
+      let user: any = null;
+
+      if (isEmail) {
+        user = await UserModel.findByEmail(emailOrPhone);
+      } else {
+        user = await UserModel.findByMobile(emailOrPhone);
+      }
+
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        res.status(200).json({ message: 'If an admin account exists with this contact, an OTP has been sent.' });
+        return;
+      }
+
+      // Only allow admins to update password via this endpoint
+      if (user.role !== 'admin') {
+        res.status(200).json({ message: 'If an admin account exists with this contact, an OTP has been sent.' });
+        return;
+      }
+
+      // Check if admin has a mobile number
+      if (!user.mobile) {
+        res.status(400).json({ error: 'Admin account does not have a mobile number registered. Please contact support.' });
+        return;
+      }
+
+      // Rate limit: max 5 OTPs in 5 minutes
+      const recentCount = await OTPModel.getRecentOTPCount(user.mobile, 5);
+      if (recentCount >= 5) {
+        res.status(429).json({ error: 'Too many OTP requests. Please try again later.' });
+        return;
+      }
+
+      // Generate and send OTP
+      const otp = AuthUtils.generateOTP();
+      await OTPModel.create({
+        mobile: user.mobile,
+        code: otp,
+        expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+        is_used: false,
+      });
+
+      await TwilioService.sendOTP(user.mobile, otp);
+
+      res.json({
+        message: 'OTP sent successfully to your registered mobile number',
+        mobile: user.mobile // Return masked mobile for confirmation
+      });
+    } catch (error) {
+      console.error('Request admin password update error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Update admin password with OTP verification
+  static async updateAdminPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const { emailOrPhone, otp, newPassword } = req.body;
+
+      // Determine if input is email or phone
+      const isEmail = emailOrPhone.includes('@');
+      let user: any = null;
+
+      if (isEmail) {
+        user = await UserModel.findByEmail(emailOrPhone);
+      } else {
+        user = await UserModel.findByMobile(emailOrPhone);
+      }
+
+      if (!user) {
+        res.status(401).json({ error: 'Invalid credentials' });
+        return;
+      }
+
+      // Only allow admins to update password via this endpoint
+      if (user.role !== 'admin') {
+        res.status(401).json({ error: 'Invalid credentials' });
+        return;
+      }
+
+      // Check if admin has a mobile number
+      if (!user.mobile) {
+        res.status(400).json({ error: 'Admin account does not have a mobile number registered' });
+        return;
+      }
+
+      // Verify OTP
+      const otpRecord = await OTPModel.findByMobileAndCode(user.mobile, otp);
+      if (!otpRecord) {
+        res.status(400).json({ error: 'Invalid or expired OTP' });
+        return;
+      }
+
+      // Validate new password
+      const passwordValidation = AuthUtils.validatePassword(newPassword);
+      if (!passwordValidation.isValid) {
+        res.status(400).json({
+          error: 'Password validation failed',
+          details: passwordValidation.errors
+        });
+        return;
+      }
+
+      // Hash the new password
+      const hashedPassword = await AuthUtils.hashPassword(newPassword);
+
+      // Update password in database
+      await UserModel.updatePassword(user.id, hashedPassword);
+
+      // Mark OTP as used
+      await OTPModel.markAsUsed(otpRecord.id);
+
+      res.json({
+        message: 'Password updated successfully. You can now login with your new password.'
+      });
+    } catch (error) {
+      console.error('Update admin password error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 }

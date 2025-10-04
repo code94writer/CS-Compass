@@ -71,22 +71,6 @@ router.get('/users', AdminController.getAllUsers);
 
 /**
  * @swagger
- * /api/admin/purchases:
- *   get:
- *     summary: Get all purchases (admin)
- *     tags: [Admin]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of purchases
- *       401:
- *         description: Unauthorized
- */
-router.get('/purchases', AdminController.getAllPurchases);
-
-/**
- * @swagger
  * /api/admin/categories:
  *   post:
  *     summary: Create a new category (admin)

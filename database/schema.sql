@@ -18,6 +18,16 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
 
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+
 -- Categories table
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -36,7 +46,6 @@ CREATE TABLE IF NOT EXISTS pdfs (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    price DECIMAL(10,2) NOT NULL,
     file_url TEXT NOT NULL,
     thumbnail_url TEXT,
     file_size BIGINT NOT NULL,
@@ -47,22 +56,8 @@ CREATE TABLE IF NOT EXISTS pdfs (
 );
 
 -- Indexes for pdfs
-CREATE INDEX IF NOT EXISTS idx_pdfs_category_id ON pdfs(category_id);
 CREATE INDEX IF NOT EXISTS idx_pdfs_uploaded_by ON pdfs(uploaded_by);
 CREATE INDEX IF NOT EXISTS idx_pdfs_is_active ON pdfs(is_active);
-
--- Purchases table
-CREATE TABLE IF NOT EXISTS purchases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    pdf_id UUID NOT NULL REFERENCES pdfs(id) ON DELETE CASCADE,
-    amount DECIMAL(10,2) NOT NULL,
-    payment_id VARCHAR(255) UNIQUE NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_user_pdf UNIQUE (user_id, pdf_id)
-);
 
 CREATE TABLE IF NOT EXISTS courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -118,10 +113,7 @@ CREATE TABLE IF NOT EXISTS user_courses (
     CREATE INDEX IF NOT EXISTS idx_otps_mobile ON otps(mobile);
     CREATE INDEX IF NOT EXISTS idx_otps_expires_at ON otps(expires_at);
 
--- Indexes for purchases
-CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
-CREATE INDEX IF NOT EXISTS idx_purchases_pdf_id ON purchases(pdf_id);
-CREATE INDEX IF NOT EXISTS idx_purchases_status ON purchases(status);
+
 
 --     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 -- );
@@ -129,13 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_purchases_status ON purchases(status);
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
--- CREATE INDEX IF NOT EXISTS idx_pdfs_category ON pdfs(category);
 CREATE INDEX IF NOT EXISTS idx_pdfs_is_active ON pdfs(is_active);
-CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
-CREATE INDEX IF NOT EXISTS idx_purchases_pdf_id ON purchases(pdf_id);
-CREATE INDEX IF NOT EXISTS idx_purchases_payment_id ON purchases(payment_id);
--- CREATE INDEX IF NOT EXISTS idx_otps_mobile ON otps(mobile);
--- CREATE INDEX IF NOT EXISTS idx_otps_expires_at ON otps(expires_at);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -147,31 +133,41 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_pdfs_updated_at ON pdfs;
 CREATE TRIGGER update_pdfs_updated_at BEFORE UPDATE ON pdfs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_purchases_updated_at BEFORE UPDATE ON purchases
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Insert default categories
+-- Insert default categories (only if they don't exist)
 
 -- Insert parent categories
-INSERT INTO categories (id, name, description, parent_id) VALUES
-    (1, 'UPSC Mains', 'UPSC Mains', NULL),
-    (2, 'UPSC Optional', 'UPSC Optional', NULL),
-    (3, 'UPPCS', 'UPPCS', NULL),
-    (4, 'Prelims Current Affairs', 'Prelims Current Affairs', NULL),
-    (5, 'Toppers Copies', 'Toppers Copies', NULL);
+INSERT INTO categories (name, description, parent_id) VALUES
+    ('UPSC Mains', 'UPSC Mains', NULL),
+    ('UPSC Optional', 'UPSC Optional', NULL),
+    ('UPPCS', 'UPPCS', NULL),
+    ('Prelims Current Affairs', 'Prelims Current Affairs', NULL),
+    ('Toppers Copies', 'Toppers Copies', NULL)
+ON CONFLICT (name) DO NOTHING;
 
--- Insert child categories (example hierarchy)
-INSERT INTO categories (id, name, description, parent_id) VALUES
-    (6, 'PSIR', 'PSIR', 2),
-    (7, 'GS 2', 'GS 2', 1),
-    (8, 'Ethics', 'Ethics', 1),
-    (9, 'Anthropology', 'Anthropology', 2);
+-- Insert child categories (using parent names to find IDs)
+INSERT INTO categories (name, description, parent_id)
+SELECT 'PSIR', 'PSIR', id FROM categories WHERE name = 'UPSC Optional'
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO categories (name, description, parent_id)
+SELECT 'GS 2', 'GS 2', id FROM categories WHERE name = 'UPSC Mains'
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO categories (name, description, parent_id)
+SELECT 'Ethics', 'Ethics', id FROM categories WHERE name = 'UPSC Mains'
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO categories (name, description, parent_id)
+SELECT 'Anthropology', 'Anthropology', id FROM categories WHERE name = 'UPSC Optional'
+ON CONFLICT (name) DO NOTHING;
 
 -- Insert default admin user (password: admin123)
 INSERT INTO users (email, mobile, password, is_verified, role) VALUES 
