@@ -136,7 +136,8 @@ class CourseController {
       // Read PDF file (local only for now)
       const fs = await import('fs/promises');
       const path = await import('path');
-      const filePath = path.resolve('uploads/local', pdf.file_url);
+      // file_url already contains the full path (e.g., "uploads/local/filename.pdf")
+      const filePath = path.resolve(pdf.file_url);
       let pdfBuffer;
       try {
         pdfBuffer = await fs.readFile(filePath);
@@ -153,9 +154,17 @@ class CourseController {
       }
       const PDFWatermarkService = (await import('../services/pdfWatermark')).default;
       const watermarked = await PDFWatermarkService.addWatermark(pdfBuffer, mobile);
+
+      // Set proper headers for binary PDF data
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${pdf.title}.pdf"`);
-      return res.send(watermarked);
+      res.setHeader('Content-Length', watermarked.length);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      // Use res.end() for binary data instead of res.send()
+      return res.end(watermarked, 'binary');
     } catch (err) {
       return next(err);
     }

@@ -1,8 +1,8 @@
 export interface User {
   id: string;
-  email: string;
-  mobile: string;
-  password?: string;
+  email: string | null;
+  mobile: string | null;
+  password?: string | null;
   is_verified: boolean;
   role: 'student' | 'admin';
   created_at: Date;
@@ -42,7 +42,7 @@ export interface Category {
 
 export interface JWTPayload {
   userId: string;
-  email: string;
+  email: string | null;
   role: string;
 }
 

@@ -25,9 +25,9 @@ export class AuthController {
       if (!user) {
         // Auto-register user with minimal info
         user = await UserModel.create({
-          email: '',
+          email: null,
           mobile,
-          password: '',
+          password: null,
           is_verified: false,
           role: 'student',
         });

@@ -17,8 +17,8 @@ class PDFWatermarkService {
     } = options;
 
     try {
-      // Load the PDF document
-      const pdfDoc = await PDFDocument.load(pdfBuffer);
+      // Load the PDF document (ignore encryption if present)
+      const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
       const pages = pdfDoc.getPages();
 
       // Add watermark to each page
@@ -95,8 +95,8 @@ class PDFWatermarkService {
     mobile: string
   ): Promise<Buffer> {
     try {
-      // Load the PDF document
-      const pdfDoc = await PDFDocument.load(pdfBuffer);
+      // Load the PDF document (ignore encryption if present)
+      const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
       
       // Add invisible watermark as metadata
       pdfDoc.setTitle(`CS Compass - ${mobile}`);
