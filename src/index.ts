@@ -13,9 +13,7 @@ import logger from './config/logger';
 
 // Import routes
 import authRoutes from './routes/auth';
-import pdfRoutes from './routes/pdf';
 import adminRoutes from './routes/admin';
-import pdfLocalRoutes from './routes/pdfLocal';
 import courseRoutes from './routes/course';
 import categoryRoutes from './routes/category';
 
@@ -153,9 +151,7 @@ app.get('/health', (req, res) => {
 
 // API routes with rate limiting
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/pdfs', pdfRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/pdfs', pdfLocalRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/categories', categoryRoutes);
 
@@ -168,8 +164,8 @@ app.get('/', (req, res) => {
     documentation: '/api-docs',
     endpoints: {
       auth: '/api/auth',
-      pdfs: '/api/pdfs',
       courses: '/api/courses',
+      categories: '/api/categories',
       admin: '/api/admin',
       health: '/health',
       docs: '/api-docs',

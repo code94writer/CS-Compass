@@ -65,65 +65,6 @@ router.get('/my', authenticateToken, courseController.getMyCourses);
 /**
  * @swagger
  * /api/courses:
- *   post:
- *     summary: Create a new course (admin only)
- *     tags: [Courses]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - description
- *               - contents
- *               - aboutCreator
- *               - price
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               contents:
- *                 type: object
- *               aboutCreator:
- *                 type: string
- *               price:
- *                 type: number
- *               discount:
- *                 type: number
- *               offer:
- *                 type: object
- *               expiry:
- *                 type: string
- *                 format: date-time
- *     responses:
- *       201:
- *         description: Course created
- *       400:
- *         description: Invalid input
- *       401:
- *         description: Unauthorized
- */
-router.post(
-  '/',
-  authenticateToken,
-  body('name').isString().notEmpty(),
-  body('category_id').isString().notEmpty(),
-  body('description').isString().notEmpty(),
-  //contents is optional
-  body('contents').optional().isObject(),
-  body('aboutCreator').isString().notEmpty(),
-  body('price').isNumeric(),
-  courseController.createCourse
-);
-
-/**
- * @swagger
- * /api/courses:
  *   get:
  *     summary: Get all courses
  *     tags: [Courses]
