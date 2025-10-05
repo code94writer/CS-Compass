@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS courses (
     discount DECIMAL(5,2),
     offer JSONB,
     expiry TIMESTAMP,
+    thumbnail_url TEXT,
     created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS pdfs (
     file_size BIGINT NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     uploaded_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pdf_type VARCHAR(10) DEFAULT 'full' CHECK (pdf_type IN ('demo', 'full')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -74,6 +76,7 @@ CREATE TABLE IF NOT EXISTS pdfs (
 -- Indexes for pdfs
 CREATE INDEX IF NOT EXISTS idx_pdfs_uploaded_by ON pdfs(uploaded_by);
 CREATE INDEX IF NOT EXISTS idx_pdfs_is_active ON pdfs(is_active);
+CREATE INDEX IF NOT EXISTS idx_pdfs_pdf_type ON pdfs(pdf_type);
 
 -- Videos table (linked to course)
 CREATE TABLE IF NOT EXISTS videos (

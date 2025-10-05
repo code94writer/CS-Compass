@@ -48,6 +48,78 @@ router.get(
 
 /**
  * @swagger
+ * /api/courses/{courseId}/pdfs/{pdfId}/thumbnail:
+ *   get:
+ *     summary: Get thumbnail image for a PDF (public access)
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The course ID
+ *       - in: path
+ *         name: pdfId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The PDF ID
+ *     responses:
+ *       200:
+ *         description: Thumbnail image
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Course, PDF, or thumbnail not found
+ */
+router.get(
+  '/:courseId/pdfs/:pdfId/thumbnail',
+  courseController.serveThumbnail
+);
+
+/**
+ * @swagger
+ * /api/courses/{courseId}/pdfs/{pdfId}/preview:
+ *   get:
+ *     summary: Get preview/demo PDF (accessible without purchase)
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The course ID
+ *       - in: path
+ *         name: pdfId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The PDF ID
+ *     responses:
+ *       200:
+ *         description: Demo PDF file
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       403:
+ *         description: PDF is not available for preview
+ *       404:
+ *         description: Course or PDF not found
+ */
+router.get(
+  '/:courseId/pdfs/:pdfId/preview',
+  courseController.servePreviewPDF
+);
+
+/**
+ * @swagger
  * /api/courses/my:
  *   get:
  *     summary: Get all courses purchased by the user (My Courses)
@@ -143,5 +215,31 @@ router.post(
   body('paymentId').isString().notEmpty(),
   courseController.purchaseCourse
 );
+
+/**
+ * @swagger
+ * /api/courses/{courseId}/thumbnail:
+ *   get:
+ *     summary: Get course thumbnail image
+ *     tags: [Courses]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The course ID
+ *     responses:
+ *       200:
+ *         description: Course thumbnail image
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Course not found or no thumbnail
+ */
+router.get('/:courseId/thumbnail', courseController.serveCourseThumbnail);
 
 export default router;

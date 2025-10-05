@@ -24,9 +24,25 @@ export const localUpload = multer({
   }
 });
 
+// Image upload configuration for course thumbnails
+export const imageUpload = multer({
+  storage: multer.memoryStorage(), // Store in memory for processing
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, and WebP images are allowed!'));
+    }
+  }
+});
+
 export function ensureLocalFolders() {
   const pdfDir = path.join(__dirname, '../../uploads/local');
   const thumbDir = path.join(__dirname, '../../uploads/thumbnails');
+  const courseThumbnailDir = path.join(__dirname, '../../uploads/course-thumbnails');
   if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
   if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
+  if (!fs.existsSync(courseThumbnailDir)) fs.mkdirSync(courseThumbnailDir, { recursive: true });
 }

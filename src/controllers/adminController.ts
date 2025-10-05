@@ -361,7 +361,8 @@ export class AdminController {
         thumbnail_url: thumbnailRelPath,
         file_size: fileSize,
         is_active: true,
-        uploaded_by: uploadedBy
+        uploaded_by: uploadedBy,
+        pdf_type: (req.body.pdf_type === 'demo' ? 'demo' : 'full') as 'demo' | 'full'
       };
 
       const pdf = await PDFModel.create(pdfData);
@@ -488,6 +489,243 @@ export class AdminController {
       });
     } catch (error) {
       console.error('Get course purchases error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Update PDF metadata (admin only)
+  static async updateCoursePDF(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { courseId, pdfId } = req.params;
+      const { title, description, pdf_type } = req.body;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      // Verify PDF exists and belongs to the course
+      const pdf = await PDFModel.findById(pdfId);
+      if (!pdf) {
+        res.status(404).json({ error: 'PDF not found' });
+        return;
+      }
+
+      if (pdf.course_id !== courseId) {
+        res.status(400).json({ error: 'PDF does not belong to this course' });
+        return;
+      }
+
+      // Prepare update data
+      const updateData: Partial<{ title: string; description: string; pdf_type: 'demo' | 'full' }> = {};
+      if (title !== undefined) updateData.title = title;
+      if (description !== undefined) updateData.description = description;
+      if (pdf_type !== undefined && (pdf_type === 'demo' || pdf_type === 'full')) {
+        updateData.pdf_type = pdf_type;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        res.status(400).json({ error: 'No valid fields to update' });
+        return;
+      }
+
+      // Update PDF
+      const updatedPdf = await PDFModel.update(pdfId, updateData);
+
+      res.json({
+        message: 'PDF updated successfully',
+        pdf: updatedPdf,
+      });
+    } catch (error) {
+      console.error('Update course PDF error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Delete PDF (admin only)
+  static async deleteCoursePDF(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { courseId, pdfId } = req.params;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      // Verify PDF exists and belongs to the course
+      const pdf = await PDFModel.findById(pdfId);
+      if (!pdf) {
+        res.status(404).json({ error: 'PDF not found' });
+        return;
+      }
+
+      if (pdf.course_id !== courseId) {
+        res.status(400).json({ error: 'PDF does not belong to this course' });
+        return;
+      }
+
+      // Delete physical files
+      const fs = await import('fs/promises');
+      const pathModule = await import('path');
+
+      try {
+        // Delete PDF file
+        const pdfFilePath = pathModule.resolve(pdf.file_url);
+        await fs.unlink(pdfFilePath);
+      } catch (fileError) {
+        console.warn('Failed to delete PDF file:', fileError);
+        // Continue even if file deletion fails
+      }
+
+      try {
+        // Delete thumbnail file
+        if (pdf.thumbnail_url) {
+          const thumbnailPath = pathModule.resolve(pdf.thumbnail_url);
+          await fs.unlink(thumbnailPath);
+        }
+      } catch (thumbError) {
+        console.warn('Failed to delete thumbnail file:', thumbError);
+        // Continue even if thumbnail deletion fails
+      }
+
+      // Delete from database
+      const deleted = await PDFModel.delete(pdfId);
+
+      if (!deleted) {
+        res.status(500).json({ error: 'Failed to delete PDF from database' });
+        return;
+      }
+
+      res.json({
+        message: 'PDF and associated files deleted successfully',
+        pdfId: pdfId,
+      });
+    } catch (error) {
+      console.error('Delete course PDF error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Upload or update course thumbnail
+   * POST /api/admin/courses/:courseId/thumbnail
+   */
+  static async uploadCourseThumbnail(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { courseId } = req.params;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      // Check if file was uploaded
+      if (!req.file) {
+        res.status(400).json({ error: 'No image file uploaded' });
+        return;
+      }
+
+      // Validate file type
+      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        res.status(400).json({
+          error: 'Invalid file type. Only JPEG, PNG, and WebP images are allowed'
+        });
+        return;
+      }
+
+      // Import image processor
+      const imageProcessor = (await import('../services/imageProcessor')).default;
+
+      // Validate image
+      const isValid = await imageProcessor.isValidImage(req.file.buffer);
+      if (!isValid) {
+        res.status(400).json({ error: 'Invalid image file' });
+        return;
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomNum = Math.floor(Math.random() * 1000000000);
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const filename = `${timestamp}-${randomNum}-course-thumbnail${ext}`;
+      const thumbnailPath = path.join('uploads', 'course-thumbnails', filename);
+
+      // Process and save image
+      await imageProcessor.processAndSaveImage(
+        req.file.buffer,
+        thumbnailPath,
+        {
+          maxWidth: 800,
+          maxHeight: 600,
+          quality: 85,
+          format: 'jpeg'
+        }
+      );
+
+      // Delete old thumbnail if exists
+      if (course.thumbnail_url) {
+        const oldThumbnailPath = path.resolve(course.thumbnail_url);
+        await imageProcessor.deleteImage(oldThumbnailPath);
+      }
+
+      // Update course with new thumbnail URL
+      const updatedCourse = await CourseModel.updateCourse(courseId, {
+        thumbnail_url: thumbnailPath
+      });
+
+      res.status(200).json({
+        message: 'Course thumbnail uploaded successfully',
+        course: updatedCourse
+      });
+    } catch (error) {
+      console.error('Upload course thumbnail error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Delete course thumbnail
+   * DELETE /api/admin/courses/:courseId/thumbnail
+   */
+  static async deleteCourseThumbnail(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { courseId } = req.params;
+
+      // Verify course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      if (!course.thumbnail_url) {
+        res.status(404).json({ error: 'Course has no thumbnail' });
+        return;
+      }
+
+      // Delete thumbnail file
+      const imageProcessor = (await import('../services/imageProcessor')).default;
+      const thumbnailPath = path.resolve(course.thumbnail_url);
+      await imageProcessor.deleteImage(thumbnailPath);
+
+      // Update course to remove thumbnail URL
+      await CourseModel.updateCourse(courseId, {
+        thumbnail_url: null as any
+      });
+
+      res.status(200).json({
+        message: 'Course thumbnail deleted successfully',
+        courseId
+      });
+    } catch (error) {
+      console.error('Delete course thumbnail error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }

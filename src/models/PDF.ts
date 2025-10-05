@@ -5,8 +5,8 @@ export class PDFModel {
   static async create(pdfData: Omit<PDF, 'id' | 'created_at' | 'updated_at'>): Promise<PDF> {
     try {
       const query = `
-        INSERT INTO pdfs (title, description, course_id, file_url, thumbnail_url, file_size, is_active, uploaded_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO pdfs (title, description, course_id, file_url, thumbnail_url, file_size, is_active, uploaded_by, pdf_type)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `;
       const values = [
@@ -17,7 +17,8 @@ export class PDFModel {
         pdfData.thumbnail_url,
         pdfData.file_size,
         pdfData.is_active,
-        pdfData.uploaded_by
+        pdfData.uploaded_by,
+        pdfData.pdf_type || 'full'
       ];
       const result = await pool.query(query, values);
       return result.rows[0];

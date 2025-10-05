@@ -5,10 +5,10 @@ import { Course, CourseContent, Offer } from '../types';
 class CourseModel {
   async createCourse(course: Course): Promise<Course> {
     const query = `
-      INSERT INTO courses 
-        (name, description, category_id, about_creator, price, discount, offer, expiry, created_by)
-      VALUES 
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO courses
+        (name, description, category_id, about_creator, price, discount, offer, expiry, thumbnail_url, created_by)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
     const values = [
@@ -20,6 +20,7 @@ class CourseModel {
       course.discount,
       course.offer ? JSON.stringify(course.offer) : null,
       course.expiry,
+      course.thumbnail_url || null,
       course.createdBy
     ];
     const { rows } = await pool.query(query, values);
@@ -75,6 +76,10 @@ class CourseModel {
     if (updates.expiry !== undefined) {
       fields.push(`expiry = $${paramCount++}`);
       values.push(updates.expiry);
+    }
+    if (updates.thumbnail_url !== undefined) {
+      fields.push(`thumbnail_url = $${paramCount++}`);
+      values.push(updates.thumbnail_url);
     }
 
     if (fields.length === 0) {

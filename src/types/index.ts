@@ -19,6 +19,7 @@ export interface PDF {
   file_size: number;
   is_active: boolean;
   uploaded_by: string;
+  pdf_type: 'demo' | 'full';
   created_at: Date;
   updated_at: Date;
 }
@@ -87,6 +88,7 @@ export interface Course {
   discount?: number;
   offer?: Offer;
   expiry?: Date;
+  thumbnail_url?: string;
   createdBy: string;
   createdAt?: Date;
   updatedAt?: Date;

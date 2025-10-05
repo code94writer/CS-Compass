@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body, param } from 'express-validator';
 import { AdminController } from '../controllers/adminController';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
-import { localUpload } from '../services/pdfLocal';
+import { localUpload, imageUpload } from '../services/pdfLocal';
 
 const router = Router();
 
@@ -321,6 +321,165 @@ router.post(
   '/courses/:courseId/pdfs',
   localUpload.single('pdf'),
   AdminController.uploadCoursePDF
+);
+
+/**
+ * @swagger
+ * /api/admin/courses/{courseId}/pdfs/{pdfId}:
+ *   put:
+ *     summary: Update PDF metadata (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The course ID
+ *       - in: path
+ *         name: pdfId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The PDF ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               pdf_type:
+ *                 type: string
+ *                 enum: [demo, full]
+ *     responses:
+ *       200:
+ *         description: PDF updated successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Course or PDF not found
+ */
+router.put(
+  '/courses/:courseId/pdfs/:pdfId',
+  body('title').optional().isString(),
+  body('description').optional().isString(),
+  body('pdf_type').optional().isIn(['demo', 'full']),
+  AdminController.updateCoursePDF
+);
+
+/**
+ * @swagger
+ * /api/admin/courses/{courseId}/pdfs/{pdfId}:
+ *   delete:
+ *     summary: Delete PDF and associated files (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The course ID
+ *       - in: path
+ *         name: pdfId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The PDF ID
+ *     responses:
+ *       200:
+ *         description: PDF deleted successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Course or PDF not found
+ */
+router.delete(
+  '/courses/:courseId/pdfs/:pdfId',
+  AdminController.deleteCoursePDF
+);
+
+/**
+ * @swagger
+ * /api/admin/courses/{courseId}/thumbnail:
+ *   post:
+ *     summary: Upload or update course thumbnail (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The course ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
+ *                 description: Course thumbnail image (JPEG, PNG, or WebP)
+ *     responses:
+ *       200:
+ *         description: Thumbnail uploaded successfully
+ *       400:
+ *         description: Invalid file type or missing file
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Course not found
+ */
+router.post(
+  '/courses/:courseId/thumbnail',
+  imageUpload.single('thumbnail'),
+  AdminController.uploadCourseThumbnail
+);
+
+/**
+ * @swagger
+ * /api/admin/courses/{courseId}/thumbnail:
+ *   delete:
+ *     summary: Delete course thumbnail (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The course ID
+ *     responses:
+ *       200:
+ *         description: Thumbnail deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Course not found or no thumbnail exists
+ */
+router.delete(
+  '/courses/:courseId/thumbnail',
+  AdminController.deleteCourseThumbnail
 );
 
 /**
