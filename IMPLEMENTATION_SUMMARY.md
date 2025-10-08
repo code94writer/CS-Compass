@@ -1,273 +1,263 @@
-# Implementation Summary: Admin Password Update & Login Fix
+# PDF Management Features - Implementation Summary
 
-## 🎯 Tasks Completed
+## Overview
+Successfully implemented comprehensive PDF management features for the CS Compass application, including update/delete APIs, demo/preview PDF functionality, and secure file serving endpoints.
 
-### ✅ Task 1: Admin Password Update API with OTP Verification
+## ✅ Completed Features
 
-**New Endpoints Created:**
+### 1. PDF Type Field (Demo vs Full)
+- **Added**: `pdf_type` enum field to PDFs table
+- **Values**: `'demo'` | `'full'`
+- **Default**: `'full'`
+- **Purpose**: Distinguish between preview/demo PDFs and full course PDFs
+- **Migration**: `database/migrations/20250105_add_pdf_type.sql`
 
-1. **Request Password Update** - `POST /api/auth/admin/request-password-update`
-   - Sends OTP to admin's registered mobile number
-   - Rate limited (5 requests per 5 minutes)
-   - Returns masked mobile number for confirmation
+### 2. Update PDF Endpoint
+- **Endpoint**: `PUT /api/admin/courses/:courseId/pdfs/:pdfId`
+- **Auth**: Admin only
+- **Features**:
+  - Update title, description, and pdf_type
+  - Validates PDF belongs to course
+  - All fields optional
+- **Status**: ✅ Tested and working
 
-2. **Update Password** - `POST /api/auth/admin/update-password`
-   - Verifies OTP before allowing password change
-   - Validates new password strength
-   - Hashes password with bcrypt (12 rounds)
-   - Marks OTP as used after successful update
+### 3. Delete PDF Endpoint
+- **Endpoint**: `DELETE /api/admin/courses/:courseId/pdfs/:pdfId`
+- **Auth**: Admin only
+- **Features**:
+  - Deletes PDF file from storage
+  - Deletes thumbnail from storage
+  - Deletes database record
+  - Graceful error handling
+- **Status**: ✅ Tested and working
 
-**Security Features:**
-- OTP expires in 5 minutes
-- Single-use OTPs
-- Strong password validation (8+ chars, uppercase, lowercase, number, special char)
-- User enumeration prevention
-- Role-based access (admin only)
+### 4. Thumbnail Serving Endpoint
+- **Endpoint**: `GET /api/courses/:courseId/pdfs/:pdfId/thumbnail`
+- **Auth**: Public (no authentication required)
+- **Features**:
+  - Serves PNG thumbnail images
+  - Cached for 24 hours
+  - Works for all PDFs
+- **Status**: ✅ Tested and working
 
-### ✅ Task 2: Admin Login Issue Diagnosed & Fixed
+### 5. Demo/Preview PDF Serving Endpoint
+- **Endpoint**: `GET /api/courses/:courseId/pdfs/:pdfId/preview`
+- **Auth**: Public (no authentication required)
+- **Features**:
+  - Serves demo PDFs only (pdf_type = 'demo')
+  - Blocks full PDFs with 403 error
+  - Cached for 1 hour
+  - No watermark applied
+- **Status**: ✅ Tested and working
 
-**Problem:**
-- Admin login was failing with credentials: `admin@cscompass.com` / `admin123`
-- `isPasswordValid` was returning `false`
-
-**Root Cause:**
-- The bcrypt hash in the database did NOT match the password "admin123"
-- Hash: `$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi`
-- This hash was for a different password or was corrupted
-
-**Solution:**
-- Created diagnostic script to test password hashing
-- Generated correct bcrypt hash for "admin123" with 12 salt rounds
-- Updated database with correct hash
-- Verified login works successfully
-
-**Current Admin Credentials:**
-- Email: `admin@cscompass.com`
-- Password: `admin123`
-- Mobile: `+1234567890`
-
----
+### 6. Enhanced Download Endpoint
+- **Endpoint**: `GET /api/courses/:courseId/download/:pdfId`
+- **Auth**: Required
+- **Features**:
+  - Demo PDFs: Accessible to all authenticated users
+  - Full PDFs: Requires course purchase
+  - Applies watermark with user mobile
+- **Status**: ✅ Tested and working
 
 ## 📁 Files Modified
 
+### Database
+- ✅ `database/migrations/20250105_add_pdf_type.sql` (new)
+- ✅ `database/schema.sql` (updated)
+
+### TypeScript Types
+- ✅ `src/types/index.ts` (updated PDF interface)
+
+### Models
+- ✅ `src/models/PDF.ts` (updated create method)
+
 ### Controllers
-- `src/controllers/authController.ts`
-  - Added `requestAdminPasswordUpdate()` method (lines 316-377)
-  - Added `updateAdminPassword()` method (lines 379-454)
+- ✅ `src/controllers/adminController.ts`
+  - Added `updateCoursePDF()`
+  - Added `deleteCoursePDF()`
+  - Updated `uploadCoursePDF()` to support pdf_type
+
+- ✅ `src/controllers/courseController.ts`
+  - Added `serveThumbnail()`
+  - Added `servePreviewPDF()`
+  - Updated `downloadCoursePDF()` for pdf_type logic
 
 ### Routes
-- `src/routes/auth.ts`
-  - Added validation rules for new endpoints (lines 82-112)
-  - Added routes with Swagger documentation (lines 423-473)
+- ✅ `src/routes/admin.ts`
+  - Added PUT `/courses/:courseId/pdfs/:pdfId`
+  - Added DELETE `/courses/:courseId/pdfs/:pdfId`
 
----
-
-## 📁 Files Created
-
-### Utility Scripts
-1. `scripts/test-admin-password.ts` - Diagnose password hash issues
-2. `scripts/fix-admin-password.ts` - Reset admin password to "admin123"
-3. `scripts/get-latest-otp.ts` - Retrieve latest OTP for testing
-4. `scripts/test-admin-login.sh` - Automated API testing
+- ✅ `src/routes/course.ts`
+  - Added GET `/:courseId/pdfs/:pdfId/thumbnail`
+  - Added GET `/:courseId/pdfs/:pdfId/preview`
 
 ### Documentation
-1. `docs/ADMIN_PASSWORD_UPDATE.md` - Comprehensive API documentation
-2. `IMPLEMENTATION_SUMMARY.md` - This file
-
----
+- ✅ `internal_docs/PDF_MANAGEMENT_FEATURES.md` (new)
+- ✅ `test_scripts/test-pdf-management.sh` (new)
+- ✅ `IMPLEMENTATION_SUMMARY.md` (this file)
 
 ## 🧪 Testing Results
 
-All tests passed successfully:
+All endpoints have been manually tested and verified:
 
-| Test | Status | Details |
-|------|--------|---------|
-| Admin login (email) | ✅ | `admin@cscompass.com` / `admin123` |
-| Admin login (phone) | ✅ | `+1234567890` / `admin123` |
-| Request password update | ✅ | OTP sent successfully |
-| Update password with OTP | ✅ | Password updated |
-| Login with new password | ✅ | Login successful |
-| Password validation | ✅ | Proper errors for weak passwords |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Update PDF metadata | ✅ Pass | Successfully updates title, description, pdf_type |
+| Delete PDF | ✅ Pass | Deletes file, thumbnail, and DB record |
+| Serve thumbnail | ✅ Pass | Returns PNG image, public access |
+| Serve demo preview | ✅ Pass | Works for demo PDFs only |
+| Block full preview | ✅ Pass | Returns 403 for full PDFs |
+| Download demo (no purchase) | ✅ Pass | Allows download with watermark |
+| Download full (no purchase) | ✅ Pass | Blocks with 403 error |
+| Upload with pdf_type | ✅ Pass | Accepts pdf_type parameter |
 
----
+## 🔒 Security Features
 
-## 🚀 Quick Start
+1. **Access Control**:
+   - Admin-only endpoints for update/delete
+   - Purchase verification for full PDFs
+   - Public access for thumbnails and demo PDFs
 
-### Test Admin Login
+2. **Watermarking**:
+   - All downloads (demo or full) are watermarked
+   - User mobile number embedded in PDF
+
+3. **File Cleanup**:
+   - Physical files deleted when PDF removed
+   - Graceful handling of missing files
+
+4. **Validation**:
+   - Course ownership verification
+   - PDF type validation (demo/full only)
+   - Proper error messages
+
+## 📊 Access Control Matrix
+
+| PDF Type | Thumbnail | Preview | Download (No Purchase) | Download (With Purchase) |
+|----------|-----------|---------|------------------------|--------------------------|
+| Demo     | ✅ Public | ✅ Public | ✅ Allowed (watermarked) | ✅ Allowed (watermarked) |
+| Full     | ✅ Public | ❌ 403 Forbidden | ❌ 403 Forbidden | ✅ Allowed (watermarked) |
+
+## 🚀 API Examples
+
+### Upload PDF with Type
 ```bash
-curl -X POST "http://localhost:3000/api/auth/login" \
+curl -X POST http://localhost:3000/api/admin/courses/{courseId}/pdfs \
+  -H "Authorization: Bearer {ADMIN_TOKEN}" \
+  -F "pdf=@file.pdf" \
+  -F "title=My PDF" \
+  -F "pdf_type=demo"
+```
+
+### Update PDF
+```bash
+curl -X PUT http://localhost:3000/api/admin/courses/{courseId}/pdfs/{pdfId} \
   -H "Content-Type: application/json" \
-  -d '{
-    "emailOrPhone": "admin@cscompass.com",
-    "password": "admin123"
-  }'
+  -H "Authorization: Bearer {ADMIN_TOKEN}" \
+  -d '{"title": "New Title", "pdf_type": "full"}'
 ```
 
-### Request Password Update
+### Delete PDF
 ```bash
-curl -X POST "http://localhost:3000/api/auth/admin/request-password-update" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "emailOrPhone": "admin@cscompass.com"
-  }'
+curl -X DELETE http://localhost:3000/api/admin/courses/{courseId}/pdfs/{pdfId} \
+  -H "Authorization: Bearer {ADMIN_TOKEN}"
 ```
 
-### Update Password (after receiving OTP)
+### Get Thumbnail
 ```bash
-curl -X POST "http://localhost:3000/api/auth/admin/update-password" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "emailOrPhone": "admin@cscompass.com",
-    "otp": "YOUR_OTP_HERE",
-    "newPassword": "NewSecurePass123!"
-  }'
+curl http://localhost:3000/api/courses/{courseId}/pdfs/{pdfId}/thumbnail \
+  -o thumbnail.png
 ```
 
----
-
-## 🔧 Utility Commands
-
-### Reset Admin Password to "admin123"
+### Get Preview
 ```bash
-npx ts-node scripts/fix-admin-password.ts
+curl http://localhost:3000/api/courses/{courseId}/pdfs/{pdfId}/preview \
+  -o preview.pdf
 ```
 
-### Test Password Hash
-```bash
-npx ts-node scripts/test-admin-password.ts
+## 📝 Database Schema Changes
+
+```sql
+-- Added to pdfs table
+ALTER TABLE pdfs ADD COLUMN pdf_type VARCHAR(10) DEFAULT 'full' 
+  CHECK (pdf_type IN ('demo', 'full'));
+
+-- Added index
+CREATE INDEX idx_pdfs_pdf_type ON pdfs(pdf_type);
 ```
 
-### Get Latest OTP (for testing)
-```bash
-npx ts-node scripts/get-latest-otp.ts
-```
+## 🎯 Use Cases
 
-### Run Automated Tests
-```bash
-./scripts/test-admin-login.sh
-```
+### For Admins
+1. Upload demo PDFs for course previews
+2. Upload full PDFs for purchased courses
+3. Update PDF metadata and type
+4. Delete PDFs and associated files
 
----
+### For Students (Not Purchased)
+1. View thumbnail images
+2. Download demo PDFs
+3. Preview course content before purchase
 
-## 🔐 Security Notes
+### For Students (Purchased)
+1. Download full PDFs with watermark
+2. Access all course materials
 
-1. **OTP Delivery**: In development, OTPs are logged to console if Twilio is not configured
-2. **Password Requirements**:
-   - Minimum 8 characters
-   - At least one uppercase letter
-   - At least one lowercase letter
-   - At least one number
-   - At least one special character
-3. **Rate Limiting**: Maximum 5 OTP requests per 5 minutes per mobile number
-4. **OTP Expiry**: OTPs expire after 5 minutes
-5. **Single-Use**: OTPs are marked as used after successful verification
+## ✨ Key Improvements
 
----
+1. **Flexible Content Management**: Admins can easily manage demo vs full PDFs
+2. **Better User Experience**: Students can preview content before purchase
+3. **Security**: Proper access control prevents unauthorized access
+4. **File Management**: Automatic cleanup when PDFs are deleted
+5. **Performance**: Caching for thumbnails and previews
+6. **Traceability**: Watermarking for all downloads
 
-## 📊 API Flow Diagram
+## 🔄 Migration Instructions
 
-```
-Admin Password Update Flow:
-┌─────────────────────────────────────────────────────────────┐
-│ 1. Request Password Update                                  │
-│    POST /api/auth/admin/request-password-update             │
-│    Input: { emailOrPhone }                                  │
-│    ↓                                                         │
-│    System validates admin user                              │
-│    ↓                                                         │
-│    Generate OTP (6 digits)                                  │
-│    ↓                                                         │
-│    Store OTP in database (expires in 5 min)                 │
-│    ↓                                                         │
-│    Send OTP via Twilio SMS                                  │
-│    ↓                                                         │
-│    Return success message                                   │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│ 2. Update Password                                          │
-│    POST /api/auth/admin/update-password                     │
-│    Input: { emailOrPhone, otp, newPassword }                │
-│    ↓                                                         │
-│    Validate admin user                                      │
-│    ↓                                                         │
-│    Verify OTP (valid, not expired, not used)                │
-│    ↓                                                         │
-│    Validate new password strength                           │
-│    ↓                                                         │
-│    Hash password with bcrypt (12 rounds)                    │
-│    ↓                                                         │
-│    Update password in database                              │
-│    ↓                                                         │
-│    Mark OTP as used                                         │
-│    ↓                                                         │
-│    Return success message                                   │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│ 3. Login with New Password                                  │
-│    POST /api/auth/login                                     │
-│    Input: { emailOrPhone, password }                        │
-│    ↓                                                         │
-│    Find user by email/phone                                 │
-│    ↓                                                         │
-│    Verify password with bcrypt.compare()                    │
-│    ↓                                                         │
-│    Generate JWT token                                       │
-│    ↓                                                         │
-│    Store session token                                      │
-│    ↓                                                         │
-│    Return token and user info                               │
-└─────────────────────────────────────────────────────────────┘
-```
+1. **Run Migration**:
+   ```bash
+   PGPASSWORD=cs_password psql -h localhost -U postgres -d cs_compass \
+     -f database/migrations/20250105_add_pdf_type.sql
+   ```
 
----
+2. **Verify Schema**:
+   ```bash
+   PGPASSWORD=cs_password psql -h localhost -U postgres -d cs_compass \
+     -c "\d pdfs"
+   ```
 
-## 🐛 Troubleshooting
+3. **Restart Server**:
+   ```bash
+   npm run dev
+   ```
 
-### OTP Not Received
-- **Development**: Check server console for OTP
-- **Production**: Verify Twilio configuration in `.env`
+## 📖 Documentation
 
-### Password Validation Fails
-Ensure new password meets all requirements:
-- ✓ At least 8 characters
-- ✓ One uppercase letter
-- ✓ One lowercase letter
-- ✓ One number
-- ✓ One special character
+- **Feature Documentation**: `internal_docs/PDF_MANAGEMENT_FEATURES.md`
+- **API Documentation**: Available at `http://localhost:3000/api-docs`
+- **Test Script**: `test_scripts/test-pdf-management.sh`
 
-### OTP Expired
-- OTPs are valid for 5 minutes only
-- Request a new OTP if expired
+## ✅ Verification Checklist
 
-### Login Still Failing
-Run the fix script to reset password:
-```bash
-npx ts-node scripts/fix-admin-password.ts
-```
+- [x] Database migration applied successfully
+- [x] TypeScript types updated
+- [x] All endpoints implemented
+- [x] Access control working correctly
+- [x] File deletion working
+- [x] Watermarking functional
+- [x] Error handling implemented
+- [x] Documentation created
+- [x] Test script created
+- [x] Manual testing completed
 
----
+## 🎉 Conclusion
 
-## 📚 Additional Resources
+All requested features have been successfully implemented and tested. The application now supports:
+- ✅ PDF metadata updates
+- ✅ PDF deletion with file cleanup
+- ✅ Demo/preview PDF functionality
+- ✅ Thumbnail and preview serving
+- ✅ Proper access control based on purchase status
 
-- Full API Documentation: `docs/ADMIN_PASSWORD_UPDATE.md`
-- Swagger UI: `http://localhost:3000/api-docs`
-- Health Check: `http://localhost:3000/health`
-
----
-
-## ✨ Summary
-
-Both tasks have been successfully completed:
-
-1. ✅ **Admin Password Update API** - Fully implemented with OTP verification, following security best practices
-2. ✅ **Admin Login Issue** - Root cause identified (incorrect password hash) and fixed
-
-The admin can now:
-- Login with email or phone number
-- Securely update password using OTP verification
-- Use strong passwords that meet security requirements
-
-All functionality has been tested and verified to work correctly.
+The implementation is production-ready with proper error handling, security measures, and documentation.
 

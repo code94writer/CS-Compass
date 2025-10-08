@@ -54,13 +54,13 @@ app.use(helmet({
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://api.civilservicescompass.com'])
-    : ['http://localhost:3000', 'https://api.civilservicescompass.com', 'http://127.0.0.1:3000'],
+    : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   optionsSuccessStatus: 200,
 };
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 
 // Rate limiting with different limits for different endpoints
 const generalLimiter = rateLimit({

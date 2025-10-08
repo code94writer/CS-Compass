@@ -1,12 +1,15 @@
 // ...existing code...
 import { Request, Response, NextFunction } from 'express';
-import { ValidationError, validationResult } from 'express-validator';
+import { validationResult } from 'express-validator';
 import CourseModel from '../models/Course';
 import UserCourseModel from '../models/UserCourse';
+import PaymentTransactionModel from '../models/PaymentTransaction';
 import { ResponseHelper } from '../utils/response';
 import pool from '../config/database';
+import PayUService from '../services/payu';
+import logger from '../config/logger';
 
-import { Course } from '../types';
+import { Course, PayUPaymentResponse } from '../types';
 
 class CourseController {
 
@@ -144,24 +147,330 @@ class CourseController {
     }
   }
 
+  /**
+   * Initiate payment for course purchase
+   * This creates a payment transaction and returns PayU payment parameters
+   */
   async purchaseCourse(req: Request, res: Response, next: NextFunction) {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return ResponseHelper.validationError(res, JSON.stringify(errors.array()));
       }
+
+      // Check if PayU is configured
+      if (!PayUService.isEnabled()) {
+        return ResponseHelper.error(
+          res,
+          'Payment service is not configured. Please contact administrator.',
+          503
+        );
+      }
+
       // @ts-ignore
       const user = req.user || { id: req.body.userId };
-      const { courseId, amount, paymentId, expiryDate } = req.body;
-      const purchase = await UserCourseModel.purchaseCourse(
-        user.id,
+      const { courseId } = req.body;
+
+      // Validate course exists
+      const course = await CourseModel.getCourseById(courseId);
+      if (!course) {
+        return ResponseHelper.notFound(res, 'Course not found');
+      }
+
+      // Check if course is free
+      if (course.price === 0) {
+        return ResponseHelper.error(res, 'This course is free. No payment required.', 400);
+      }
+
+      // Calculate final amount (apply discount if available)
+      let finalAmount: number = Number(course.price);
+      if (course.discount && course.discount > 0) {
+        finalAmount = course.price - (course.price * course.discount / 100);
+      }
+      console.log('Final amount: ', finalAmount, typeof finalAmount, course.price, typeof course.price);
+
+      // Check if user already has an active purchase
+      const hasAccess = await UserCourseModel.hasAccess(user.id, courseId);
+      if (hasAccess) {
+        return ResponseHelper.error(res, 'You already have access to this course', 400);
+      }
+
+      // Generate unique transaction ID and idempotency key
+      const timestamp = Date.now();
+      const transactionId = PayUService.generateTransactionId();
+      const idempotencyKey = PayUService.generateIdempotencyKey(user.id, courseId, timestamp);
+
+      // Check for duplicate transaction (idempotency)
+      const existingTransaction = await PaymentTransactionModel.findByIdempotencyKey(idempotencyKey);
+      if (existingTransaction) {
+        // Return existing transaction if it's still pending or successful
+        if (existingTransaction.status === 'success') {
+          return ResponseHelper.error(res, 'Payment already completed for this course', 400);
+        }
+        if (existingTransaction.status === 'initiated' || existingTransaction.status === 'pending') {
+          // Return existing payment details
+          const config = PayUService.getConfig();
+          const paymentParams = PayUService.createPaymentRequest({
+            transactionId: existingTransaction.transaction_id,
+            amount: existingTransaction.amount,
+            productInfo: course.name,
+            firstName: user.email?.split('@')[0] || 'Student',
+            email: user.email || `${user.id}@cscompass.com`,
+            phone: user.mobile || '0000000000',
+            userId: user.id,
+            courseId: courseId,
+          });
+
+          return ResponseHelper.success(res, {
+            transactionId: existingTransaction.transaction_id,
+            paymentUrl: PayUService.getPaymentUrl(),
+            paymentParams,
+            merchantKey: config?.merchantKey,
+          }, 'Payment already initiated. Please complete the payment.');
+        }
+      }
+
+      // Get user details
+      const { UserModel } = await import('../models/User');
+      const dbUser = await UserModel.findById(user.id);
+
+      const userEmail = dbUser?.email || user.email || `${user.id}@cscompass.com`;
+      const userPhone = dbUser?.mobile || user.mobile || '0000000000';
+      const userName = userEmail.split('@')[0] || 'Student';
+
+      // Create payment request
+      const paymentParams = PayUService.createPaymentRequest({
+        transactionId,
+        amount: finalAmount,
+        productInfo: course.name,
+        firstName: userName,
+        email: userEmail,
+        phone: userPhone,
+        userId: user.id,
+        courseId: courseId,
+      });
+
+      // Get client IP and user agent
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+                       req.socket.remoteAddress ||
+                       'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+
+      // Create payment transaction record
+      await PaymentTransactionModel.create({
+        transaction_id: transactionId,
+        user_id: user.id,
+        course_id: courseId,
+        amount: finalAmount,
+        currency: 'INR',
+        status: 'initiated',
+        hash: paymentParams.hash,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        idempotency_key: idempotencyKey,
+        initiated_at: new Date(),
+      });
+
+      logger.info('Payment initiated', {
+        transactionId,
+        userId: user.id,
         courseId,
-        amount,
-        paymentId,
-        expiryDate
-      );
-      return ResponseHelper.success(res, purchase, 'Course purchased successfully');
+        amount: finalAmount,
+        ipAddress,
+      });
+
+      const config = PayUService.getConfig();
+
+      // Return payment parameters to client
+      return ResponseHelper.success(res, {
+        transactionId,
+        paymentUrl: PayUService.getPaymentUrl(),
+        paymentParams,
+        merchantKey: config?.merchantKey,
+        course: {
+          id: course.id,
+          name: course.name,
+          price: course.price,
+          discount: course.discount,
+          finalAmount,
+        },
+      }, 'Payment initiated successfully. Please complete the payment.');
+
     } catch (err) {
+      logger.error('Error initiating payment', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        userId: (req as any).user?.id,
+        courseId: req.body.courseId,
+      });
+      return next(err);
+    }
+  }
+
+  /**
+   * Handle PayU payment webhook/callback
+   * This endpoint receives payment status from PayU and updates transaction
+   */
+  async handlePaymentCallback(req: Request, res: Response, next: NextFunction) {
+    try {
+      logger.info('Payment callback received', {
+        body: req.body,
+        method: req.method,
+      });
+
+      // PayU sends data as form-urlencoded
+      const payuResponse: PayUPaymentResponse = req.body;
+
+      // Validate required fields
+      if (!payuResponse.txnid || !payuResponse.status || !payuResponse.hash) {
+        logger.error('Invalid PayU callback - missing required fields', { payuResponse });
+        return ResponseHelper.error(res, 'Invalid payment callback data', 400);
+      }
+
+      // Find transaction
+      const transaction = await PaymentTransactionModel.findByTransactionId(payuResponse.txnid);
+      if (!transaction) {
+        logger.error('Transaction not found for callback', { txnid: payuResponse.txnid });
+        return ResponseHelper.notFound(res, 'Transaction not found');
+      }
+
+      // Prevent duplicate processing
+      if (transaction.status === 'success') {
+        logger.warn('Transaction already processed as successful', { txnid: payuResponse.txnid });
+        return ResponseHelper.success(res, { status: 'already_processed' }, 'Payment already processed');
+      }
+
+      // Validate payment response
+      const validation = PayUService.validatePaymentResponse(payuResponse);
+
+      if (!validation.isValid) {
+        logger.error('Payment validation failed', {
+          txnid: payuResponse.txnid,
+          error: validation.error,
+        });
+
+        // Update transaction as failed
+        await PaymentTransactionModel.updateStatus(
+          transaction.transaction_id,
+          'failed',
+          validation.error || 'Payment verification failed'
+        );
+
+        return ResponseHelper.error(res, validation.error || 'Payment verification failed', 400);
+      }
+
+      // Update transaction with PayU response
+      await PaymentTransactionModel.updateWithPayUResponse(
+        transaction.transaction_id,
+        payuResponse,
+        validation.status
+      );
+
+      // If payment is successful, create user_course entry
+      if (validation.status === 'success') {
+        try {
+          // Calculate expiry date (if course has expiry)
+          const course = await CourseModel.getCourseById(transaction.course_id);
+          let expiryDate: Date | undefined;
+
+          if (course?.expiry) {
+            expiryDate = new Date(course.expiry);
+          }
+
+          // Create user_course entry
+          await UserCourseModel.purchaseCourse(
+            transaction.user_id,
+            transaction.course_id,
+            transaction.amount,
+            payuResponse.mihpayid,
+            expiryDate
+          );
+
+          logger.info('Course purchase completed successfully', {
+            transactionId: transaction.transaction_id,
+            userId: transaction.user_id,
+            courseId: transaction.course_id,
+            payuPaymentId: payuResponse.mihpayid,
+          });
+
+        } catch (error) {
+          logger.error('Error creating user_course entry after successful payment', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            transactionId: transaction.transaction_id,
+          });
+
+          // Even if user_course creation fails, payment was successful
+          // This should be handled manually or via retry mechanism
+        }
+      }
+
+      logger.info('Payment callback processed', {
+        transactionId: transaction.transaction_id,
+        status: validation.status,
+        payuPaymentId: payuResponse.mihpayid,
+      });
+
+      // Return success response
+      return ResponseHelper.success(res, {
+        transactionId: transaction.transaction_id,
+        status: validation.status,
+        payuPaymentId: payuResponse.mihpayid,
+      }, 'Payment processed successfully');
+
+    } catch (err) {
+      logger.error('Error processing payment callback', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        body: req.body,
+      });
+      return next(err);
+    }
+  }
+
+  /**
+   * Get payment status
+   * Allows client to check the status of a payment transaction
+   */
+  async getPaymentStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { transactionId } = req.params;
+
+      // @ts-ignore
+      const user = req.user;
+
+      // Find transaction
+      const transaction = await PaymentTransactionModel.findByTransactionId(transactionId);
+
+      if (!transaction) {
+        return ResponseHelper.notFound(res, 'Transaction not found');
+      }
+
+      // Verify user owns this transaction
+      if (transaction.user_id !== user.id) {
+        return ResponseHelper.error(res, 'Unauthorized access to transaction', 403);
+      }
+
+      // Get course details
+      const course = await CourseModel.getCourseById(transaction.course_id);
+
+      return ResponseHelper.success(res, {
+        transactionId: transaction.transaction_id,
+        status: transaction.status,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        payuPaymentId: transaction.payu_payment_id,
+        course: course ? {
+          id: course.id,
+          name: course.name,
+        } : null,
+        initiatedAt: transaction.initiated_at,
+        completedAt: transaction.completed_at,
+        errorMessage: transaction.error_message,
+      });
+
+    } catch (err) {
+      logger.error('Error getting payment status', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        transactionId: req.params.transactionId,
+      });
       return next(err);
     }
   }

@@ -173,9 +173,119 @@ router.get(
 
 /**
  * @swagger
+ * /api/courses/payment/initiate:
+ *   post:
+ *     summary: Initiate payment for course purchase
+ *     tags: [Courses, Payment]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - courseId
+ *             properties:
+ *               courseId:
+ *                 type: string
+ *                 description: ID of the course to purchase
+ *     responses:
+ *       200:
+ *         description: Payment initiated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 transactionId:
+ *                   type: string
+ *                 paymentUrl:
+ *                   type: string
+ *                 paymentParams:
+ *                   type: object
+ *                 merchantKey:
+ *                   type: string
+ *       400:
+ *         description: Invalid input or course already purchased
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Course not found
+ *       503:
+ *         description: Payment service not configured
+ */
+router.post(
+  '/payment/initiate',
+  authenticateToken,
+  body('courseId').isString().notEmpty().withMessage('courseId is required'),
+  courseController.purchaseCourse
+);
+
+/**
+ * @swagger
+ * /api/courses/payment/callback:
+ *   post:
+ *     summary: PayU payment webhook callback
+ *     tags: [Payment]
+ *     description: This endpoint receives payment status updates from PayU
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Payment callback processed
+ *       400:
+ *         description: Invalid callback data
+ *       404:
+ *         description: Transaction not found
+ */
+router.post(
+  '/payment/callback',
+  courseController.handlePaymentCallback
+);
+
+/**
+ * @swagger
+ * /api/courses/payment/status/{transactionId}:
+ *   get:
+ *     summary: Get payment transaction status
+ *     tags: [Payment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Transaction ID
+ *     responses:
+ *       200:
+ *         description: Payment status retrieved
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - not your transaction
+ *       404:
+ *         description: Transaction not found
+ */
+router.get(
+  '/payment/status/:transactionId',
+  authenticateToken,
+  courseController.getPaymentStatus
+);
+
+/**
+ * @swagger
  * /api/courses/purchase:
  *   post:
- *     summary: Purchase a course
+ *     summary: Purchase a course (DEPRECATED - use /payment/initiate)
+ *     deprecated: true
  *     tags: [Courses]
  *     security:
  *       - bearerAuth: []
@@ -187,21 +297,12 @@ router.get(
  *             type: object
  *             required:
  *               - courseId
- *               - amount
- *               - paymentId
  *             properties:
  *               courseId:
  *                 type: string
- *               amount:
- *                 type: number
- *               paymentId:
- *                 type: string
- *               expiryDate:
- *                 type: string
- *                 format: date-time
  *     responses:
- *       201:
- *         description: Course purchased
+ *       200:
+ *         description: Payment initiated
  *       400:
  *         description: Invalid input
  *       401:
@@ -211,8 +312,6 @@ router.post(
   '/purchase',
   authenticateToken,
   body('courseId').isString().notEmpty(),
-  body('amount').isNumeric(),
-  body('paymentId').isString().notEmpty(),
   courseController.purchaseCourse
 );
 

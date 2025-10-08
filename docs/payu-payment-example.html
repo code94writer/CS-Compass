@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayU Payment Integration Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #paymentForm {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PayU Payment Integration - Test Page</h1>
+        
+        <div class="info">
+            <strong>Note:</strong> This is a test page for PayU payment integration. 
+            Make sure your backend server is running and PayU credentials are configured.
+        </div>
+
+        <div class="section">
+            <h2>Step 1: Configuration</h2>
+            <label for="apiUrl">API Base URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:3000" placeholder="http://localhost:3000">
+            
+            <label for="authToken">Authorization Token (JWT):</label>
+            <input type="text" id="authToken" placeholder="Your JWT token here">
+            
+            <label for="courseId">Course ID:</label>
+            <input type="text" id="courseId" placeholder="Enter course UUID">
+        </div>
+
+        <div class="section">
+            <h2>Step 2: Initiate Payment</h2>
+            <button onclick="initiatePayment()">Initiate Payment</button>
+            <button onclick="checkStatus()" id="checkStatusBtn" disabled>Check Payment Status</button>
+        </div>
+
+        <div id="responseSection" style="display: none;">
+            <div class="section">
+                <h2>Step 3: Payment Response</h2>
+                <div id="responseContent"></div>
+            </div>
+        </div>
+
+        <!-- Hidden form for PayU submission -->
+        <form id="paymentForm" method="POST" action="">
+            <input type="hidden" name="key" id="key">
+            <input type="hidden" name="txnid" id="txnid">
+            <input type="hidden" name="amount" id="amount">
+            <input type="hidden" name="productinfo" id="productinfo">
+            <input type="hidden" name="firstname" id="firstname">
+            <input type="hidden" name="email" id="email">
+            <input type="hidden" name="phone" id="phone">
+            <input type="hidden" name="surl" id="surl">
+            <input type="hidden" name="furl" id="furl">
+            <input type="hidden" name="curl" id="curl">
+            <input type="hidden" name="hash" id="hash">
+            <input type="hidden" name="udf1" id="udf1">
+            <input type="hidden" name="udf2" id="udf2">
+        </form>
+
+        <div class="section">
+            <h2>Instructions</h2>
+            <ol>
+                <li>Enter your API base URL (default: http://localhost:3000)</li>
+                <li>Get your JWT token by logging in to the application</li>
+                <li>Enter a valid course ID from your database</li>
+                <li>Click "Initiate Payment" to start the payment process</li>
+                <li>You will be redirected to PayU payment page</li>
+                <li>Complete the payment using test credentials</li>
+                <li>After payment, use "Check Payment Status" to verify</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>Test Credentials (PayU Test Mode)</h2>
+            <p><strong>Test Card Number:</strong> 5123456789012346</p>
+            <p><strong>CVV:</strong> 123</p>
+            <p><strong>Expiry:</strong> Any future date</p>
+            <p><strong>Name:</strong> Any name</p>
+            <p><em>Note: Use PayU's official test credentials from their documentation</em></p>
+        </div>
+    </div>
+
+    <script>
+        let currentTransactionId = null;
+
+        async function initiatePayment() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const authToken = document.getElementById('authToken').value;
+            const courseId = document.getElementById('courseId').value;
+
+            if (!authToken || !courseId) {
+                showError('Please enter both Authorization Token and Course ID');
+                return;
+            }
+
+            try {
+                showInfo('Initiating payment...');
+
+                const response = await fetch(`${apiUrl}/api/courses/payment/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ courseId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(`Error: ${data.message || 'Payment initiation failed'}`);
+                    return;
+                }
+
+                if (data.success) {
+                    currentTransactionId = data.data.transactionId;
+                    document.getElementById('checkStatusBtn').disabled = false;
+                    
+                    showSuccess('Payment initiated successfully!');
+                    displayPaymentDetails(data.data);
+                    
+                    // Populate and submit PayU form
+                    populatePaymentForm(data.data);
+                    
+                    // Auto-submit after 3 seconds
+                    setTimeout(() => {
+                        if (confirm('Ready to proceed to PayU payment page?')) {
+                            document.getElementById('paymentForm').submit();
+                        }
+                    }, 3000);
+                } else {
+                    showError('Payment initiation failed');
+                }
+            } catch (error) {
+                showError(`Network error: ${error.message}`);
+            }
+        }
+
+        function populatePaymentForm(data) {
+            const form = document.getElementById('paymentForm');
+            form.action = data.paymentUrl;
+            
+            document.getElementById('key').value = data.merchantKey;
+            document.getElementById('txnid').value = data.paymentParams.txnid;
+            document.getElementById('amount').value = data.paymentParams.amount;
+            document.getElementById('productinfo').value = data.paymentParams.productinfo;
+            document.getElementById('firstname').value = data.paymentParams.firstname;
+            document.getElementById('email').value = data.paymentParams.email;
+            document.getElementById('phone').value = data.paymentParams.phone;
+            document.getElementById('surl').value = data.paymentParams.surl;
+            document.getElementById('furl').value = data.paymentParams.furl;
+            document.getElementById('curl').value = data.paymentParams.curl || data.paymentParams.furl;
+            document.getElementById('hash').value = data.paymentParams.hash;
+            document.getElementById('udf1').value = data.paymentParams.udf1 || '';
+            document.getElementById('udf2').value = data.paymentParams.udf2 || '';
+        }
+
+        function displayPaymentDetails(data) {
+            const content = `
+                <div class="success">
+                    <h3>Payment Details</h3>
+                    <p><strong>Transaction ID:</strong> ${data.transactionId}</p>
+                    <p><strong>Course:</strong> ${data.course.name}</p>
+                    <p><strong>Amount:</strong> ₹${data.course.finalAmount}</p>
+                    ${data.course.discount ? `<p><strong>Discount:</strong> ${data.course.discount}%</p>` : ''}
+                </div>
+                <div class="info">
+                    <p>You will be redirected to PayU payment page in 3 seconds...</p>
+                    <p>Or click the button below to proceed manually:</p>
+                    <button onclick="document.getElementById('paymentForm').submit()">Proceed to Payment</button>
+                </div>
+                <h4>Payment Parameters:</h4>
+                <pre>${JSON.stringify(data.paymentParams, null, 2)}</pre>
+            `;
+            
+            document.getElementById('responseContent').innerHTML = content;
+            document.getElementById('responseSection').style.display = 'block';
+        }
+
+        async function checkStatus() {
+            if (!currentTransactionId) {
+                showError('No transaction ID available');
+                return;
+            }
+
+            const apiUrl = document.getElementById('apiUrl').value;
+            const authToken = document.getElementById('authToken').value;
+
+            try {
+                showInfo('Checking payment status...');
+
+                const response = await fetch(`${apiUrl}/api/courses/payment/status/${currentTransactionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const status = data.data.status;
+                    const statusClass = status === 'success' ? 'success' : 
+                                      status === 'failed' ? 'error' : 'info';
+                    
+                    const content = `
+                        <div class="${statusClass}">
+                            <h3>Payment Status</h3>
+                            <p><strong>Status:</strong> ${status.toUpperCase()}</p>
+                            <p><strong>Transaction ID:</strong> ${data.data.transactionId}</p>
+                            <p><strong>Amount:</strong> ₹${data.data.amount}</p>
+                            ${data.data.payuPaymentId ? `<p><strong>PayU Payment ID:</strong> ${data.data.payuPaymentId}</p>` : ''}
+                            ${data.data.errorMessage ? `<p><strong>Error:</strong> ${data.data.errorMessage}</p>` : ''}
+                        </div>
+                        <pre>${JSON.stringify(data.data, null, 2)}</pre>
+                    `;
+                    
+                    document.getElementById('responseContent').innerHTML = content;
+                    document.getElementById('responseSection').style.display = 'block';
+                } else {
+                    showError('Failed to fetch payment status');
+                }
+            } catch (error) {
+                showError(`Network error: ${error.message}`);
+            }
+        }
+
+        function showError(message) {
+            const content = `<div class="error">${message}</div>`;
+            document.getElementById('responseContent').innerHTML = content;
+            document.getElementById('responseSection').style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            const content = `<div class="success">${message}</div>`;
+            document.getElementById('responseContent').innerHTML = content;
+            document.getElementById('responseSection').style.display = 'block';
+        }
+
+        function showInfo(message) {
+            const content = `<div class="info">${message}</div>`;
+            document.getElementById('responseContent').innerHTML = content;
+            document.getElementById('responseSection').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
+
