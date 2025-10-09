@@ -10,6 +10,7 @@ import swaggerUi from 'swagger-ui-express';
 // Import configurations
 import { swaggerSpec } from './config/swagger';
 import logger from './config/logger';
+import { corsOptions, logCorsConfiguration } from './config/cors';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -50,17 +51,12 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// CORS configuration
-const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://api.civilservicescompass.com'])
-    : ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200,
-};
-// app.use(cors(corsOptions));
+// CORS middleware - Enable cross-origin requests
+// Configuration is imported from src/config/cors.ts
+app.use(cors(corsOptions));
+
+// Log CORS configuration on startup
+logCorsConfiguration();
 
 // Rate limiting with different limits for different endpoints
 const generalLimiter = rateLimit({
