@@ -35,12 +35,16 @@ export class OTPModel {
   }
 
   static async getRecentOTPCount(mobile: string, minutes: number = 5): Promise<number> {
+    // Validate and sanitize minutes parameter to prevent SQL injection
+    // Ensure it's a positive integer between 1 and 60
+    const validMinutes = Math.max(1, Math.min(60, Math.floor(minutes)));
+
     const query = `
-      SELECT COUNT(*) as count 
-      FROM otps 
-      WHERE mobile = $1 AND created_at > NOW() - INTERVAL '${minutes} minutes'
+      SELECT COUNT(*) as count
+      FROM otps
+      WHERE mobile = $1 AND created_at > NOW() - INTERVAL '1 minute' * $2
     `;
-    const result = await pool.query(query, [mobile]);
+    const result = await pool.query(query, [mobile, validMinutes]);
     return parseInt(result.rows[0].count);
   }
 }

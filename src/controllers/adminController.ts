@@ -181,11 +181,30 @@ export class AdminController {
         return;
       }
 
-      // Check if any PDFs use this category
-      const pdfs = await PDFModel.findAll(1, 0, category.name);
-      if (pdfs.length > 0) {
-        res.status(400).json({ 
-          error: 'Cannot delete category. PDFs are using this category.' 
+      // Check if any courses use this category
+      const coursesQuery = await pool.query(
+        'SELECT COUNT(*) FROM courses WHERE category_id = $1',
+        [id]
+      );
+      const courseCount = parseInt(coursesQuery.rows[0].count);
+
+      if (courseCount > 0) {
+        res.status(400).json({
+          error: `Cannot delete category. ${courseCount} course(s) are using this category.`
+        });
+        return;
+      }
+
+      // Also check if this category has child categories
+      const childCategoriesQuery = await pool.query(
+        'SELECT COUNT(*) FROM categories WHERE parent_id = $1',
+        [id]
+      );
+      const childCount = parseInt(childCategoriesQuery.rows[0].count);
+
+      if (childCount > 0) {
+        res.status(400).json({
+          error: `Cannot delete category. ${childCount} child categor${childCount === 1 ? 'y' : 'ies'} exist under this category.`
         });
         return;
       }

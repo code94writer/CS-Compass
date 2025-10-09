@@ -45,14 +45,14 @@ CREATE TABLE IF NOT EXISTS courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    category_id UUID NOT NULL REFERENCES categories(id),
+    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
     about_creator TEXT,
     price DECIMAL(10,2) NOT NULL,
     discount DECIMAL(5,2),
     offer JSONB,
     expiry TIMESTAMP,
     thumbnail_url TEXT,
-    created_by UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -90,6 +90,9 @@ CREATE TABLE IF NOT EXISTS videos (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Index for videos
+CREATE INDEX IF NOT EXISTS idx_videos_course_id ON videos(course_id);
+
 CREATE TABLE IF NOT EXISTS user_courses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -103,6 +106,11 @@ CREATE TABLE IF NOT EXISTS user_courses (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     -- Removed unique constraint to allow multiple purchases per user/course
 );
+
+-- Indexes for user_courses
+CREATE INDEX IF NOT EXISTS idx_user_courses_user_status ON user_courses(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_user_courses_course_status ON user_courses(course_id, status);
+CREATE INDEX IF NOT EXISTS idx_user_courses_expiry ON user_courses(expiry_date) WHERE expiry_date IS NOT NULL;
 
 -- Payment Transactions table (PayU payment gateway integration)
 CREATE TABLE IF NOT EXISTS payment_transactions (
@@ -170,6 +178,7 @@ CREATE INDEX IF NOT EXISTS idx_payment_transactions_status ON payment_transactio
 CREATE INDEX IF NOT EXISTS idx_payment_transactions_transaction_id ON payment_transactions(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_payment_transactions_payu_payment_id ON payment_transactions(payu_payment_id);
 CREATE INDEX IF NOT EXISTS idx_payment_transactions_created_at ON payment_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payment_transactions_initiated_at ON payment_transactions(initiated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_payment_transactions_idempotency_key ON payment_transactions(idempotency_key);
 
 -- Composite indexes for common queries

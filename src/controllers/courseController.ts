@@ -89,6 +89,36 @@ class CourseController {
       const course = await CourseModel.getCourseById(id);
       if (!course) return ResponseHelper.notFound(res, 'Course not found');
 
+      // Check for active purchases before deletion
+      const purchasesQuery = await pool.query(
+        `SELECT COUNT(*) FROM user_courses
+         WHERE course_id = $1 AND status = 'completed'`,
+        [id]
+      );
+      const purchaseCount = parseInt(purchasesQuery.rows[0].count);
+
+      if (purchaseCount > 0) {
+        return ResponseHelper.error(res,
+          `Cannot delete course. ${purchaseCount} user(s) have purchased this course. Consider deactivating instead.`,
+          400
+        );
+      }
+
+      // Check for pending payments before deletion
+      const pendingPaymentsQuery = await pool.query(
+        `SELECT COUNT(*) FROM payment_transactions
+         WHERE course_id = $1 AND status IN ('initiated', 'pending')`,
+        [id]
+      );
+      const pendingCount = parseInt(pendingPaymentsQuery.rows[0].count);
+
+      if (pendingCount > 0) {
+        return ResponseHelper.error(res,
+          `Cannot delete course. ${pendingCount} payment(s) are pending for this course.`,
+          400
+        );
+      }
+
       // Delete thumbnail file if exists
       if (course.thumbnail_url) {
         const imageProcessor = (await import('../services/imageProcessor')).default;
@@ -358,16 +388,20 @@ class CourseController {
         return ResponseHelper.error(res, validation.error || 'Payment verification failed', 400);
       }
 
-      // Update transaction with PayU response
-      await PaymentTransactionModel.updateWithPayUResponse(
-        transaction.transaction_id,
-        payuResponse,
-        validation.status
-      );
-
-      // If payment is successful, create user_course entry
+      // Update transaction with PayU response and create user_course entry in a transaction
+      // This ensures data consistency between payment_transactions and user_courses tables
       if (validation.status === 'success') {
+        const client = await pool.connect();
         try {
+          await client.query('BEGIN');
+
+          // Update payment transaction
+          await PaymentTransactionModel.updateWithPayUResponse(
+            transaction.transaction_id,
+            payuResponse,
+            validation.status
+          );
+
           // Calculate expiry date (if course has expiry)
           const course = await CourseModel.getCourseById(transaction.course_id);
           let expiryDate: Date | undefined;
@@ -385,6 +419,8 @@ class CourseController {
             expiryDate
           );
 
+          await client.query('COMMIT');
+
           logger.info('Course purchase completed successfully', {
             transactionId: transaction.transaction_id,
             userId: transaction.user_id,
@@ -393,14 +429,30 @@ class CourseController {
           });
 
         } catch (error) {
-          logger.error('Error creating user_course entry after successful payment', {
+          await client.query('ROLLBACK');
+
+          logger.error('Error processing successful payment - TRANSACTION ROLLED BACK', {
             error: error instanceof Error ? error.message : 'Unknown error',
             transactionId: transaction.transaction_id,
+            stack: error instanceof Error ? error.stack : undefined,
           });
 
-          // Even if user_course creation fails, payment was successful
-          // This should be handled manually or via retry mechanism
+          // Return error response since transaction was rolled back
+          return ResponseHelper.error(res,
+            'Payment successful but failed to grant course access. Please contact support with your transaction ID.',
+            500,
+            { transactionId: transaction.transaction_id }
+          );
+        } finally {
+          client.release();
         }
+      } else {
+        // For non-successful payments, just update the transaction status
+        await PaymentTransactionModel.updateWithPayUResponse(
+          transaction.transaction_id,
+          payuResponse,
+          validation.status
+        );
       }
 
       logger.info('Payment callback processed', {
