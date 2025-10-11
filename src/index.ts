@@ -55,14 +55,14 @@ async function startServer() {
     },
     crossOriginEmbedderPolicy: false,
   }));
-
+  console.log('1');
   // CORS middleware - Enable cross-origin requests
   // Configuration is imported from src/config/cors.ts
   app.use(cors(corsOptions));
 
   // Log CORS configuration on startup
   logCorsConfiguration();
-
+  console.log('2');
   // Rate limiting with different limits for different endpoints
   const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -89,7 +89,7 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
   });
-
+  console.log('3');
   app.use(generalLimiter);
 
   // Body parsing middleware
@@ -112,7 +112,7 @@ async function startServer() {
     extended: true, 
     limit: process.env.MAX_REQUEST_SIZE || '10mb' 
   }));
-
+  console.log('4');
   // Logging middleware
   app.use(morgan('combined', {
     stream: {
@@ -121,7 +121,7 @@ async function startServer() {
       },
     },
   }));
-
+  console.log('5');
   // Swagger documentation
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
@@ -149,7 +149,7 @@ async function startServer() {
     logger.info('Health check requested', { healthCheck });
     ResponseHelper.success(res, healthCheck, 'Service is healthy');
   });
-
+  console.log('6');
   // API routes with rate limiting
   app.use('/api/auth', authLimiter, authRoutes);
   app.use('/api/admin', adminRoutes);
@@ -176,7 +176,7 @@ async function startServer() {
     
     ResponseHelper.success(res, apiInfo, 'Welcome to CS Compass API');
   });
-
+  console.log('7');
   // 404 handler
   app.use('*', (req, res) => {
     logger.warn('Route not found', { 
@@ -188,7 +188,7 @@ async function startServer() {
     
     ResponseHelper.notFound(res, `Cannot ${req.method} ${req.originalUrl}`);
   });
-
+  console.log('8');
   // Global error handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     logger.error('Global error handler', {
@@ -244,21 +244,21 @@ async function startServer() {
       process.env.NODE_ENV === 'development' ? err : undefined
     );
   });
-
+  console.log('9');
   // Graceful shutdown
   process.on('SIGTERM', () => {
     logger.info('SIGTERM received, shutting down gracefully');
     process.exit(0);
   });
-
+  console.log('10');
   process.on('SIGINT', () => {
     logger.info('SIGINT received, shutting down gracefully');
     process.exit(0);
   });
-
+  console.log('11');
   // Ensure local upload folders exist
   ensureLocalFolders();
-
+  console.log('12');
   // Start server
   const server = app.listen(PORT, async () => {
     logger.info('Server started', {
@@ -287,6 +287,7 @@ async function startServer() {
     // console.log(`🧹 Cleanup: Running on startup and every ${cleanupIntervalHours} hours`);
     // console.log('----------------------------------------');
   });
+    console.log('13');
   } catch (err) {
     logger.error('Failed to run migrations or ensure database schema', err);
     process.exit(1);
