@@ -5,13 +5,16 @@
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    mobile VARCHAR(15) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    mobile VARCHAR(15) UNIQUE,
     password VARCHAR(255),
     is_verified BOOLEAN DEFAULT TRUE, -- Set to TRUE by default as email/mobile verification is disabled
     role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('student', 'admin')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    CONSTRAINT email_or_mobile_required CHECK (
+        email IS NOT NULL OR mobile IS NOT NULL
+    )
 );
 
 -- Index for quick lookup by email or mobile
