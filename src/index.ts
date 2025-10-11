@@ -36,7 +36,7 @@ async function startServer() {
   console.log('start');
   // Run migrations and ensure tables exist before starting server
   await ensureDatabaseSchema();
-  await runMigrations();
+  // await runMigrations();
   // runMigrations()
   //   .then(() => ensureDatabaseSchema())
   //   .catch((err) => {
