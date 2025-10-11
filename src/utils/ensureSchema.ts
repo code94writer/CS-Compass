@@ -8,7 +8,7 @@ import bcrypt from 'bcrypt';
  */
 export async function ensureDatabaseSchema() {
   // List of required tables (add more as needed)
-  const requiredTables = ['users', 'categories', 'pdfs', 'otps', 'courses', 'videos', 'user_courses'];
+  const requiredTables = ['users', 'categories', 'pdfs', 'otps', 'courses', 'videos', 'user_courses', 'payment_transactions', 'user_sessions'];
   const client = await pool.connect();
   try {
     // Check if all required tables exist
