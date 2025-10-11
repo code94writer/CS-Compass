@@ -279,6 +279,60 @@ router.put('/courses/:id', AdminController.updateCourse);
 
 /**
  * @swagger
+ * /api/admin/courses/{id}/deactivate:
+ *   put:
+ *     summary: Deactivate a course (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     responses:
+ *       200:
+ *         description: Course deactivated successfully
+ *       400:
+ *         description: Course is already deactivated
+ *       404:
+ *         description: Course not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.put('/courses/:id/deactivate', AdminController.deactivateCourse);
+
+/**
+ * @swagger
+ * /api/admin/courses/{id}/reactivate:
+ *   put:
+ *     summary: Reactivate a course (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Course ID
+ *     responses:
+ *       200:
+ *         description: Course reactivated successfully
+ *       400:
+ *         description: Course is already active
+ *       404:
+ *         description: Course not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.put('/courses/:id/reactivate', AdminController.reactivateCourse);
+
+/**
+ * @swagger
  * /api/admin/courses/{courseId}/pdfs:
  *   post:
  *     summary: Upload a PDF to a course (admin only)

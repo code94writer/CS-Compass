@@ -33,8 +33,16 @@ class CourseModel {
     return rows[0] || null;
   }
 
-  async getAllCourses(): Promise<Course[]> {
-    const query = 'SELECT * FROM courses ORDER BY created_at DESC';
+  async getAllCourses(includeInactive: boolean = false): Promise<Course[]> {
+    let query = 'SELECT * FROM courses';
+
+    // Filter out inactive courses by default (for public-facing queries)
+    if (!includeInactive) {
+      query += ' WHERE is_active = TRUE';
+    }
+
+    query += ' ORDER BY created_at DESC';
+
     const { rows } = await pool.query(query);
     return rows;
   }
@@ -81,6 +89,10 @@ class CourseModel {
       fields.push(`thumbnail_url = $${paramCount++}`);
       values.push(updates.thumbnail_url);
     }
+    if (updates.is_active !== undefined) {
+      fields.push(`is_active = $${paramCount++}`);
+      values.push(updates.is_active);
+    }
 
     if (fields.length === 0) {
       return null; // No fields to update
@@ -96,6 +108,46 @@ class CourseModel {
 
     const { rows } = await pool.query(query, values);
     return rows[0] || null;
+  }
+
+  async deactivateCourse(id: string): Promise<Course | null> {
+    const query = `
+      UPDATE courses
+      SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [id]);
+    return rows[0] || null;
+  }
+
+  async reactivateCourse(id: string): Promise<Course | null> {
+    const query = `
+      UPDATE courses
+      SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [id]);
+    return rows[0] || null;
+  }
+
+  async searchCourses(searchTerm: string, includeInactive: boolean = false): Promise<Course[]> {
+    let query = `
+      SELECT c.* FROM courses c
+      LEFT JOIN categories cat ON c.category_id = cat.id
+      WHERE (c.name ILIKE $1 OR c.description ILIKE $1 OR cat.name ILIKE $1)
+    `;
+
+    // Filter out inactive courses by default
+    if (!includeInactive) {
+      query += ' AND c.is_active = TRUE';
+    }
+
+    query += ' ORDER BY c.created_at DESC';
+
+    const { rows } = await pool.query(query, [`%${searchTerm}%`]);
+    return rows;
   }
 
   // Add more methods as needed (delete, etc.)

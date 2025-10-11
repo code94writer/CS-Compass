@@ -89,6 +89,7 @@ export interface Course {
   offer?: Offer;
   expiry?: Date;
   thumbnail_url?: string;
+  is_active?: boolean;
   createdBy: string;
   createdAt?: Date;
   updatedAt?: Date;

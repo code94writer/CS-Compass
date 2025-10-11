@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS courses (
     offer JSONB,
     expiry TIMESTAMP,
     thumbnail_url TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

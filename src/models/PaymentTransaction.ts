@@ -306,16 +306,19 @@ class PaymentTransactionModel {
    */
   async cleanupOldTransactions(daysOld: number = 30): Promise<number> {
     try {
+      // Validate and sanitize daysOld parameter
+      const validDaysOld = Math.max(1, Math.min(365, Math.floor(daysOld)));
+
       const query = `
         DELETE FROM payment_transactions
         WHERE status IN ('initiated', 'pending', 'failed', 'cancelled', 'timeout')
-        AND created_at < NOW() - INTERVAL '${daysOld} days'
+        AND created_at < NOW() - INTERVAL '1 day' * $1
       `;
-      const result = await pool.query(query);
-      
+      const result = await pool.query(query, [validDaysOld]);
+
       logger.info('Old transactions cleaned up', {
         deletedCount: result.rowCount,
-        daysOld,
+        daysOld: validDaysOld,
       });
 
       return result.rowCount || 0;

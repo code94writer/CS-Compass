@@ -21,6 +21,7 @@ import categoryRoutes from './routes/category';
 
 // Import utilities
 import { ResponseHelper } from './utils/response';
+import { cleanupOnStartup, setupPeriodicCleanup } from './utils/cleanup';
 
 // Ensure DB schema
 import { ensureDatabaseSchema } from './utils/ensureSchema';
@@ -256,7 +257,7 @@ console.log("new changes")
 ensureLocalFolders();
 
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   logger.info('Server started', {
     port: PORT,
     environment: process.env.NODE_ENV || 'development',
@@ -270,6 +271,18 @@ const server = app.listen(PORT, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📖 API Documentation:  ${apidocurl}`);
   console.log(`🏥 Health Check: ${healthurl}`);
+  console.log('----------------------------------------');
+
+  // Run cleanup on startup
+  logger.info('Running cleanup tasks on startup...');
+  await cleanupOnStartup();
+
+  // Setup periodic cleanup
+  const cleanupIntervalHours = parseInt(process.env.CLEANUP_INTERVAL_HOURS || '6');
+  setupPeriodicCleanup(cleanupIntervalHours);
+  logger.info(`Periodic cleanup scheduled every ${cleanupIntervalHours} hours`);
+  console.log(`🧹 Cleanup: Running on startup and every ${cleanupIntervalHours} hours`);
+  console.log('----------------------------------------');
 });
 
 export default app;

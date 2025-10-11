@@ -342,6 +342,62 @@ export class AdminController {
     }
   }
 
+  // Deactivate course (admin only)
+  static async deactivateCourse(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const course = await CourseModel.getCourseById(id);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      if (course.is_active === false) {
+        res.status(400).json({ error: 'Course is already deactivated' });
+        return;
+      }
+
+      const deactivatedCourse = await CourseModel.deactivateCourse(id);
+
+      res.json({
+        message: 'Course deactivated successfully. It is now hidden from public listings.',
+        course: deactivatedCourse,
+      });
+    } catch (error) {
+      console.error('Deactivate course error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  // Reactivate course (admin only)
+  static async reactivateCourse(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const course = await CourseModel.getCourseById(id);
+      if (!course) {
+        res.status(404).json({ error: 'Course not found' });
+        return;
+      }
+
+      if (course.is_active === true) {
+        res.status(400).json({ error: 'Course is already active' });
+        return;
+      }
+
+      const reactivatedCourse = await CourseModel.reactivateCourse(id);
+
+      res.json({
+        message: 'Course reactivated successfully. It is now visible in public listings.',
+        course: reactivatedCourse,
+      });
+    } catch (error) {
+      console.error('Reactivate course error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
   // Upload PDF to course (admin only)
   static async uploadCoursePDF(req: AuthRequest, res: Response): Promise<void> {
     try {

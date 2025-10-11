@@ -7,6 +7,7 @@ import { OTPModel } from '../models/OTP';
 import { AuthUtils } from '../utils/auth';
 import TwilioService from '../services/twilio';
 import { AuthRequest } from '../middleware/auth';
+import { cleanupBeforeOTPCreation } from '../utils/cleanup';
 
 export class AuthController {
   // ...existing code...
@@ -20,6 +21,12 @@ export class AuthController {
         return;
       }
       const { mobile } = req.body;
+
+      // Cleanup expired OTPs before creating new one (non-blocking)
+      cleanupBeforeOTPCreation().catch(err => {
+        console.warn('OTP cleanup failed (non-critical):', err);
+      });
+
       // Check if user exists, if not, create
       let user = await UserModel.findByMobile(mobile);
       if (!user) {

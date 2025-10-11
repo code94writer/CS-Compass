@@ -8,6 +8,7 @@ import { ResponseHelper } from '../utils/response';
 import pool from '../config/database';
 import PayUService from '../services/payu';
 import logger from '../config/logger';
+import { cleanupBeforePayment } from '../utils/cleanup';
 
 import { Course, PayUPaymentResponse } from '../types';
 
@@ -85,11 +86,19 @@ class CourseController {
     try {
       const { id } = req.params;
 
-      // Get course to check if it has a thumbnail
+      // Get course to verify it exists
       const course = await CourseModel.getCourseById(id);
       if (!course) return ResponseHelper.notFound(res, 'Course not found');
 
-      // Check for active purchases before deletion
+      // Check if course is already deactivated
+      if (course.is_active === false) {
+        return ResponseHelper.error(res,
+          'Course is already deactivated. Use the reactivate endpoint to restore it.',
+          400
+        );
+      }
+
+      // Check for active purchases - if any exist, deactivate instead of delete
       const purchasesQuery = await pool.query(
         `SELECT COUNT(*) FROM user_courses
          WHERE course_id = $1 AND status = 'completed'`,
@@ -97,14 +106,7 @@ class CourseController {
       );
       const purchaseCount = parseInt(purchasesQuery.rows[0].count);
 
-      if (purchaseCount > 0) {
-        return ResponseHelper.error(res,
-          `Cannot delete course. ${purchaseCount} user(s) have purchased this course. Consider deactivating instead.`,
-          400
-        );
-      }
-
-      // Check for pending payments before deletion
+      // Check for pending payments
       const pendingPaymentsQuery = await pool.query(
         `SELECT COUNT(*) FROM payment_transactions
          WHERE course_id = $1 AND status IN ('initiated', 'pending')`,
@@ -112,12 +114,31 @@ class CourseController {
       );
       const pendingCount = parseInt(pendingPaymentsQuery.rows[0].count);
 
-      if (pendingCount > 0) {
-        return ResponseHelper.error(res,
-          `Cannot delete course. ${pendingCount} payment(s) are pending for this course.`,
-          400
-        );
+      // If there are purchases or pending payments, deactivate instead of delete
+      if (purchaseCount > 0 || pendingCount > 0) {
+        const deactivatedCourse = await CourseModel.deactivateCourse(id);
+
+        logger.info('Course deactivated instead of deleted', {
+          courseId: id,
+          courseName: course.name,
+          purchaseCount,
+          pendingPaymentCount: pendingCount,
+        });
+
+        return ResponseHelper.success(res, {
+          message: `Course deactivated successfully. ${purchaseCount} user(s) have purchased this course and ${pendingCount} payment(s) are pending. The course is now hidden from public listings but existing users retain access.`,
+          course: deactivatedCourse,
+          action: 'deactivated',
+          reason: purchaseCount > 0 ? 'active_purchases' : 'pending_payments',
+          stats: {
+            purchases: purchaseCount,
+            pendingPayments: pendingCount
+          }
+        });
       }
+
+      // If no purchases or pending payments, proceed with actual deletion
+      // This is a permanent operation and should be used with caution
 
       // Delete thumbnail file if exists
       if (course.thumbnail_url) {
@@ -140,7 +161,7 @@ class CourseController {
           const pdfFilePath = path.resolve(pdf.file_url);
           await fs.unlink(pdfFilePath);
         } catch (e) {
-          console.warn(`Failed to delete PDF file: ${e}`);
+          logger.warn(`Failed to delete PDF file: ${e}`);
         }
 
         // Delete PDF thumbnail
@@ -149,7 +170,7 @@ class CourseController {
             const thumbnailPath = path.resolve(pdf.thumbnail_url);
             await fs.unlink(thumbnailPath);
           } catch (e) {
-            console.warn(`Failed to delete PDF thumbnail: ${e}`);
+            logger.warn(`Failed to delete PDF thumbnail: ${e}`);
           }
         }
 
@@ -168,9 +189,15 @@ class CourseController {
       // Delete course from database
       await pool.query('DELETE FROM courses WHERE id = $1', [id]);
 
+      logger.info('Course permanently deleted', {
+        courseId: id,
+        courseName: course.name,
+      });
+
       return ResponseHelper.success(res, {
-        message: 'Course and all associated content deleted successfully',
-        courseId: id
+        message: 'Course and all associated content permanently deleted',
+        courseId: id,
+        action: 'deleted'
       });
     } catch (err) {
       return next(err);
@@ -187,6 +214,11 @@ class CourseController {
       if (!errors.isEmpty()) {
         return ResponseHelper.validationError(res, JSON.stringify(errors.array()));
       }
+
+      // Cleanup old transactions before initiating new payment (non-blocking)
+      cleanupBeforePayment().catch(err => {
+        logger.warn('Transaction cleanup failed (non-critical)', { error: err });
+      });
 
       // Check if PayU is configured
       if (!PayUService.isEnabled()) {
@@ -205,6 +237,11 @@ class CourseController {
       const course = await CourseModel.getCourseById(courseId);
       if (!course) {
         return ResponseHelper.notFound(res, 'Course not found');
+      }
+
+      // Check if course is active
+      if (course.is_active === false) {
+        return ResponseHelper.error(res, 'This course is not available for purchase at this time.', 400);
       }
 
       // Check if course is free
