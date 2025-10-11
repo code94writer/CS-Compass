@@ -274,15 +274,15 @@ const server = app.listen(PORT, async () => {
   console.log('----------------------------------------');
 
   // Run cleanup on startup
-  logger.info('Running cleanup tasks on startup...');
-  await cleanupOnStartup();
+  // logger.info('Running cleanup tasks on startup...');
+  // await cleanupOnStartup();
 
   // Setup periodic cleanup
-  const cleanupIntervalHours = parseInt(process.env.CLEANUP_INTERVAL_HOURS || '6');
-  setupPeriodicCleanup(cleanupIntervalHours);
-  logger.info(`Periodic cleanup scheduled every ${cleanupIntervalHours} hours`);
-  console.log(`🧹 Cleanup: Running on startup and every ${cleanupIntervalHours} hours`);
-  console.log('----------------------------------------');
+  // const cleanupIntervalHours = parseInt(process.env.CLEANUP_INTERVAL_HOURS || '6');
+  // setupPeriodicCleanup(cleanupIntervalHours);
+  // logger.info(`Periodic cleanup scheduled every ${cleanupIntervalHours} hours`);
+  // console.log(`🧹 Cleanup: Running on startup and every ${cleanupIntervalHours} hours`);
+  // console.log('----------------------------------------');
 });
 
 export default app;
