@@ -33,6 +33,7 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
+  console.log('start');
   // Run migrations and ensure tables exist before starting server
   await ensureDatabaseSchema();
   await runMigrations();
@@ -42,7 +43,7 @@ async function startServer() {
   //     logger.error('Failed to run migrations or ensure database schema', err);
   //     process.exit(1);
   //   });
-
+  console.log('0');
   // Security middleware
   app.use(helmet({
     contentSecurityPolicy: {
