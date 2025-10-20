@@ -825,10 +825,10 @@ export class AdminController {
       const activeUsers = parseInt(activeUsersResult.rows[0].count);
 
       // Get count of non-active users (unverified users)
-      const nonActiveUsersResult = await pool.query(
-        'SELECT COUNT(*) FROM users WHERE is_verified = false'
+      const nonActiveCourseResult = await pool.query(
+        'SELECT COUNT(*) FROM courses WHERE is_active = false'
       );
-      const nonActiveUsers = parseInt(nonActiveUsersResult.rows[0].count);
+      const nonActiveCourses = parseInt(nonActiveCourseResult.rows[0].count);
 
       // Get total revenue (sum of all completed course purchases)
       const totalRevenueResult = await pool.query(`
@@ -843,13 +843,267 @@ export class AdminController {
         data: {
           activeCourses,
           activeUsers,
-          nonActiveUsers,
+          nonActiveCourses,
           totalRevenue,
         },
         message: 'Statistics retrieved successfully',
       });
     } catch (error) {
       console.error('Get statistics error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  /**
+   * Get comprehensive deep analytics
+   * GET /api/admin/analytics/deep
+   * Returns detailed analytics across all platform metrics
+   */
+  static async getDeepAnalytics(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      // ============ COURSE METRICS ============
+      const courseMetrics = await pool.query(`
+        SELECT
+          COUNT(*) as total_courses,
+          COUNT(*) FILTER (WHERE is_active = true) as active_courses,
+          COUNT(*) FILTER (WHERE is_active = false) as inactive_courses,
+          COUNT(DISTINCT id) FILTER (WHERE id IN (
+            SELECT DISTINCT course_id FROM user_courses WHERE status = 'completed'
+          )) as courses_with_purchases,
+          COALESCE(AVG(price), 0) as average_course_price
+        FROM courses
+      `);
+      const coursesWithoutPurchases = 
+        parseInt(courseMetrics.rows[0].total_courses) - 
+        parseInt(courseMetrics.rows[0].courses_with_purchases);
+
+      // Get most popular course
+      const mostPopularCourseResult = await pool.query(`
+        SELECT c.id, c.name, COUNT(uc.id) as purchase_count
+        FROM courses c
+        LEFT JOIN user_courses uc ON c.id = uc.course_id AND uc.status = 'completed'
+        GROUP BY c.id, c.name
+        ORDER BY purchase_count DESC
+        LIMIT 1
+      `);
+      const mostPopularCourse = mostPopularCourseResult.rows[0] || null;
+
+      // Average sales per course
+      const avgSalesResult = await pool.query(`
+        SELECT COALESCE(AVG(purchase_count), 0) as avg_sales
+        FROM (
+          SELECT course_id, COUNT(*) as purchase_count
+          FROM user_courses
+          WHERE status = 'completed'
+          GROUP BY course_id
+        ) as course_sales
+      `);
+
+      // ============ USER METRICS ============
+      const userMetrics = await pool.query(`
+        SELECT
+          COUNT(*) as total_users,
+          COUNT(*) FILTER (WHERE is_verified = true) as verified_users,
+          COUNT(*) FILTER (WHERE is_verified = false) as unverified_users,
+          COUNT(*) FILTER (WHERE role = 'admin') as admin_users,
+          COUNT(*) FILTER (WHERE role = 'student') as student_users
+        FROM users
+      `);
+
+      const usersWithPurchasesResult = await pool.query(`
+        SELECT COUNT(DISTINCT user_id) as users_with_purchases
+        FROM user_courses
+        WHERE status = 'completed'
+      `);
+
+      // ============ CONTENT METRICS ============
+      const contentMetrics = await pool.query(`
+        SELECT
+          (SELECT COUNT(*) FROM pdfs) as total_pdfs,
+          (SELECT COUNT(*) FROM pdfs WHERE is_active = true) as active_pdfs,
+          (SELECT COUNT(*) FROM pdfs WHERE pdf_type = 'demo') as demo_pdfs,
+          (SELECT COUNT(*) FROM pdfs WHERE pdf_type = 'full') as full_pdfs,
+          (SELECT COUNT(*) FROM videos) as total_videos,
+          (SELECT COUNT(*) FROM videos WHERE is_active = true) as active_videos
+      `);
+
+      // Content quality metrics
+      const contentQualityMetrics = await pool.query(`
+        SELECT
+          COUNT(DISTINCT c.id) FILTER (WHERE c.id IN (SELECT DISTINCT course_id FROM pdfs)) as courses_with_pdfs,
+          COUNT(DISTINCT c.id) FILTER (WHERE c.id IN (SELECT DISTINCT course_id FROM videos)) as courses_with_videos,
+          COUNT(DISTINCT c.id) FILTER (WHERE 
+            c.id IN (SELECT DISTINCT course_id FROM pdfs) AND 
+            c.id IN (SELECT DISTINCT course_id FROM videos)
+          ) as courses_with_both
+        FROM courses c
+      `);
+
+      const avgContentPerCourse = await pool.query(`
+        SELECT
+          COALESCE(AVG(pdf_count), 0) as avg_pdfs_per_course,
+          COALESCE(AVG(video_count), 0) as avg_videos_per_course
+        FROM (
+          SELECT
+            c.id,
+            (SELECT COUNT(*) FROM pdfs WHERE course_id = c.id) as pdf_count,
+            (SELECT COUNT(*) FROM videos WHERE course_id = c.id) as video_count
+          FROM courses c
+        ) as content_counts
+      `);
+
+      // ============ REVENUE METRICS ============
+      const revenueMetrics = await pool.query(`
+        SELECT
+          COALESCE(SUM(amount) FILTER (WHERE status = 'completed'), 0) as total_revenue,
+          COALESCE(SUM(amount) FILTER (WHERE status = 'refunded'), 0) as total_refunds,
+          COALESCE(AVG(amount) FILTER (WHERE status = 'completed'), 0) as average_order_value,
+          COALESCE(SUM(amount) FILTER (WHERE status = 'completed' AND created_at >= CURRENT_DATE), 0) as revenue_today,
+          COALESCE(SUM(amount) FILTER (WHERE status = 'completed' AND created_at >= DATE_TRUNC('week', CURRENT_DATE)), 0) as revenue_this_week,
+          COALESCE(SUM(amount) FILTER (WHERE status = 'completed' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)), 0) as revenue_this_month
+        FROM user_courses
+      `);
+
+      const netRevenue = 
+        parseFloat(revenueMetrics.rows[0].total_revenue) - 
+        parseFloat(revenueMetrics.rows[0].total_refunds);
+
+      // ============ TRANSACTION METRICS ============
+      const transactionMetrics = await pool.query(`
+        SELECT
+          COUNT(*) as total_transactions,
+          COUNT(*) FILTER (WHERE status = 'completed') as completed_transactions,
+          COUNT(*) FILTER (WHERE status = 'pending') as pending_transactions,
+          COUNT(*) FILTER (WHERE status = 'failed') as failed_transactions,
+          COUNT(*) FILTER (WHERE status = 'refunded') as refunded_transactions
+        FROM user_courses
+      `);
+
+      const totalTxn = parseInt(transactionMetrics.rows[0].total_transactions);
+      const completedTxn = parseInt(transactionMetrics.rows[0].completed_transactions);
+      const successRate = totalTxn > 0 ? ((completedTxn / totalTxn) * 100).toFixed(2) : 0;
+
+      // Purchases today
+      const purchasesTodayResult = await pool.query(`
+        SELECT COUNT(*) as purchases_today
+        FROM user_courses
+        WHERE status = 'completed' AND created_at >= CURRENT_DATE
+      `);
+
+      // ============ PAYMENT GATEWAY METRICS ============
+      const paymentModeMetrics = await pool.query(`
+        SELECT
+          payment_mode,
+          COUNT(*) as count,
+          COALESCE(SUM(amount), 0) as total_amount
+        FROM payment_transactions
+        WHERE status = 'success'
+        GROUP BY payment_mode
+        ORDER BY count DESC
+      `);
+
+      // ============ USER GROWTH METRICS ============
+      const userGrowthMetrics = await pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE) as new_users_today,
+          COUNT(*) FILTER (WHERE created_at >= DATE_TRUNC('week', CURRENT_DATE)) as new_users_this_week,
+          COUNT(*) FILTER (WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)) as new_users_this_month
+        FROM users
+      `);
+
+      // ============ CATEGORY METRICS ============
+      const categoryMetrics = await pool.query(`
+        SELECT
+          COUNT(*) as total_categories,
+          COUNT(*) FILTER (WHERE parent_id IS NULL) as top_level_categories,
+          COUNT(*) FILTER (WHERE parent_id IS NOT NULL) as sub_categories,
+          COUNT(DISTINCT id) FILTER (WHERE id IN (
+            SELECT DISTINCT category_id FROM courses
+          )) as categories_with_courses
+        FROM categories
+      `);
+
+      // ============ COMPILE RESPONSE ============
+      res.status(200).json({
+        success: true,
+        data: {
+          courses: {
+            totalCourses: parseInt(courseMetrics.rows[0].total_courses),
+            activeCourses: parseInt(courseMetrics.rows[0].active_courses),
+            inactiveCourses: parseInt(courseMetrics.rows[0].inactive_courses),
+            coursesWithPurchases: parseInt(courseMetrics.rows[0].courses_with_purchases),
+            coursesWithoutPurchases,
+            averageCoursePrice: parseFloat(courseMetrics.rows[0].average_course_price).toFixed(2),
+            averageSalesPerCourse: parseFloat(avgSalesResult.rows[0].avg_sales).toFixed(2),
+            mostPopularCourse: mostPopularCourse ? {
+              id: mostPopularCourse.id,
+              name: mostPopularCourse.name,
+              purchaseCount: parseInt(mostPopularCourse.purchase_count)
+            } : null
+          },
+          users: {
+            totalUsers: parseInt(userMetrics.rows[0].total_users),
+            verifiedUsers: parseInt(userMetrics.rows[0].verified_users),
+            unverifiedUsers: parseInt(userMetrics.rows[0].unverified_users),
+            adminUsers: parseInt(userMetrics.rows[0].admin_users),
+            studentUsers: parseInt(userMetrics.rows[0].student_users),
+            usersWithPurchases: parseInt(usersWithPurchasesResult.rows[0].users_with_purchases)
+          },
+          userGrowth: {
+            newUsersToday: parseInt(userGrowthMetrics.rows[0].new_users_today),
+            newUsersThisWeek: parseInt(userGrowthMetrics.rows[0].new_users_this_week),
+            newUsersThisMonth: parseInt(userGrowthMetrics.rows[0].new_users_this_month)
+          },
+          content: {
+            totalPDFs: parseInt(contentMetrics.rows[0].total_pdfs),
+            activePDFs: parseInt(contentMetrics.rows[0].active_pdfs),
+            demoPDFs: parseInt(contentMetrics.rows[0].demo_pdfs),
+            fullPDFs: parseInt(contentMetrics.rows[0].full_pdfs),
+            totalVideos: parseInt(contentMetrics.rows[0].total_videos),
+            activeVideos: parseInt(contentMetrics.rows[0].active_videos)
+          },
+          contentQuality: {
+            coursesWithPDFs: parseInt(contentQualityMetrics.rows[0].courses_with_pdfs),
+            coursesWithVideos: parseInt(contentQualityMetrics.rows[0].courses_with_videos),
+            coursesWithBoth: parseInt(contentQualityMetrics.rows[0].courses_with_both),
+            averagePDFsPerCourse: parseFloat(avgContentPerCourse.rows[0].avg_pdfs_per_course).toFixed(2),
+            averageVideosPerCourse: parseFloat(avgContentPerCourse.rows[0].avg_videos_per_course).toFixed(2)
+          },
+          revenue: {
+            totalRevenue: parseFloat(revenueMetrics.rows[0].total_revenue).toFixed(2),
+            totalRefunds: parseFloat(revenueMetrics.rows[0].total_refunds).toFixed(2),
+            netRevenue: netRevenue.toFixed(2),
+            averageOrderValue: parseFloat(revenueMetrics.rows[0].average_order_value).toFixed(2),
+            revenueToday: parseFloat(revenueMetrics.rows[0].revenue_today).toFixed(2),
+            revenueThisWeek: parseFloat(revenueMetrics.rows[0].revenue_this_week).toFixed(2),
+            revenueThisMonth: parseFloat(revenueMetrics.rows[0].revenue_this_month).toFixed(2)
+          },
+          transactions: {
+            totalTransactions: parseInt(transactionMetrics.rows[0].total_transactions),
+            completedTransactions: parseInt(transactionMetrics.rows[0].completed_transactions),
+            pendingTransactions: parseInt(transactionMetrics.rows[0].pending_transactions),
+            failedTransactions: parseInt(transactionMetrics.rows[0].failed_transactions),
+            refundedTransactions: parseInt(transactionMetrics.rows[0].refunded_transactions),
+            successRate: parseFloat(successRate as string),
+            purchasesToday: parseInt(purchasesTodayResult.rows[0].purchases_today)
+          },
+          paymentModes: paymentModeMetrics.rows.map(row => ({
+            mode: row.payment_mode || 'Unknown',
+            count: parseInt(row.count),
+            totalAmount: parseFloat(row.total_amount).toFixed(2)
+          })),
+          categories: {
+            totalCategories: parseInt(categoryMetrics.rows[0].total_categories),
+            topLevelCategories: parseInt(categoryMetrics.rows[0].top_level_categories),
+            subCategories: parseInt(categoryMetrics.rows[0].sub_categories),
+            categoriesWithCourses: parseInt(categoryMetrics.rows[0].categories_with_courses)
+          }
+        },
+        message: 'Deep analytics retrieved successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Get deep analytics error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }

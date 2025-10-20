@@ -116,6 +116,252 @@ router.get('/statistics', AdminController.getStatistics);
 
 /**
  * @swagger
+ * /api/admin/analytics/deep:
+ *   get:
+ *     summary: Get comprehensive deep analytics
+ *     description: Returns detailed analytics across all platform metrics including courses, users, content, revenue, transactions, payment modes, user growth, and categories
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Deep analytics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     courses:
+ *                       type: object
+ *                       properties:
+ *                         totalCourses:
+ *                           type: integer
+ *                           example: 30
+ *                         activeCourses:
+ *                           type: integer
+ *                           example: 25
+ *                         inactiveCourses:
+ *                           type: integer
+ *                           example: 5
+ *                         coursesWithPurchases:
+ *                           type: integer
+ *                           example: 18
+ *                         coursesWithoutPurchases:
+ *                           type: integer
+ *                           example: 12
+ *                         averageCoursePrice:
+ *                           type: string
+ *                           example: "2500.00"
+ *                         averageSalesPerCourse:
+ *                           type: string
+ *                           example: "4.72"
+ *                         mostPopularCourse:
+ *                           type: object
+ *                           nullable: true
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                             name:
+ *                               type: string
+ *                             purchaseCount:
+ *                               type: integer
+ *                     users:
+ *                       type: object
+ *                       properties:
+ *                         totalUsers:
+ *                           type: integer
+ *                           example: 180
+ *                         verifiedUsers:
+ *                           type: integer
+ *                           example: 150
+ *                         unverifiedUsers:
+ *                           type: integer
+ *                           example: 30
+ *                         adminUsers:
+ *                           type: integer
+ *                           example: 5
+ *                         studentUsers:
+ *                           type: integer
+ *                           example: 175
+ *                         usersWithPurchases:
+ *                           type: integer
+ *                           example: 85
+ *                     userGrowth:
+ *                       type: object
+ *                       properties:
+ *                         newUsersToday:
+ *                           type: integer
+ *                           example: 3
+ *                         newUsersThisWeek:
+ *                           type: integer
+ *                           example: 12
+ *                         newUsersThisMonth:
+ *                           type: integer
+ *                           example: 45
+ *                     content:
+ *                       type: object
+ *                       properties:
+ *                         totalPDFs:
+ *                           type: integer
+ *                           example: 120
+ *                         activePDFs:
+ *                           type: integer
+ *                           example: 110
+ *                         demoPDFs:
+ *                           type: integer
+ *                           example: 30
+ *                         fullPDFs:
+ *                           type: integer
+ *                           example: 90
+ *                         totalVideos:
+ *                           type: integer
+ *                           example: 85
+ *                         activeVideos:
+ *                           type: integer
+ *                           example: 80
+ *                     contentQuality:
+ *                       type: object
+ *                       properties:
+ *                         coursesWithPDFs:
+ *                           type: integer
+ *                           example: 28
+ *                         coursesWithVideos:
+ *                           type: integer
+ *                           example: 22
+ *                         coursesWithBoth:
+ *                           type: integer
+ *                           example: 20
+ *                         averagePDFsPerCourse:
+ *                           type: string
+ *                           example: "4.00"
+ *                         averageVideosPerCourse:
+ *                           type: string
+ *                           example: "2.83"
+ *                     revenue:
+ *                       type: object
+ *                       properties:
+ *                         totalRevenue:
+ *                           type: string
+ *                           example: "125000.50"
+ *                         totalRefunds:
+ *                           type: string
+ *                           example: "3000.00"
+ *                         netRevenue:
+ *                           type: string
+ *                           example: "122000.50"
+ *                         averageOrderValue:
+ *                           type: string
+ *                           example: "2500.00"
+ *                         revenueToday:
+ *                           type: string
+ *                           example: "5000.00"
+ *                         revenueThisWeek:
+ *                           type: string
+ *                           example: "25000.00"
+ *                         revenueThisMonth:
+ *                           type: string
+ *                           example: "35000.00"
+ *                     transactions:
+ *                       type: object
+ *                       properties:
+ *                         totalTransactions:
+ *                           type: integer
+ *                           example: 95
+ *                         completedTransactions:
+ *                           type: integer
+ *                           example: 85
+ *                         pendingTransactions:
+ *                           type: integer
+ *                           example: 5
+ *                         failedTransactions:
+ *                           type: integer
+ *                           example: 5
+ *                         refundedTransactions:
+ *                           type: integer
+ *                           example: 2
+ *                         successRate:
+ *                           type: number
+ *                           example: 89.47
+ *                         purchasesToday:
+ *                           type: integer
+ *                           example: 2
+ *                     paymentModes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           mode:
+ *                             type: string
+ *                             example: "UPI"
+ *                           count:
+ *                             type: integer
+ *                             example: 45
+ *                           totalAmount:
+ *                             type: string
+ *                             example: "67500.00"
+ *                     categories:
+ *                       type: object
+ *                       properties:
+ *                         totalCategories:
+ *                           type: integer
+ *                           example: 12
+ *                         topLevelCategories:
+ *                           type: integer
+ *                           example: 4
+ *                         subCategories:
+ *                           type: integer
+ *                           example: 8
+ *                         categoriesWithCourses:
+ *                           type: integer
+ *                           example: 10
+ *                 message:
+ *                   type: string
+ *                   example: Deep analytics retrieved successfully
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2025-10-20T10:18:00.000Z"
+ *       401:
+ *         description: Unauthorized - Invalid or missing authentication token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *       403:
+ *         description: Forbidden - User does not have admin privileges
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Access denied. Admin role required.
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Internal server error
+ */
+router.get('/analytics/deep', AdminController.getDeepAnalytics);
+
+/**
+ * @swagger
  * /api/admin/pdfs:
  *   get:
  *     summary: Get all PDFs (admin)
