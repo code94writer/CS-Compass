@@ -804,4 +804,53 @@ export class AdminController {
       res.status(500).json({ error: 'Internal server error' });
     }
   }
+
+  /**
+   * Get platform statistics
+   * GET /api/admin/statistics
+   * Returns count of active courses, active users, non-active users, and total revenue
+   */
+  static async getStatistics(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      // Get count of active courses
+      const activeCoursesResult = await pool.query(
+        'SELECT COUNT(*) FROM courses WHERE is_active = true'
+      );
+      const activeCourses = parseInt(activeCoursesResult.rows[0].count);
+
+      // Get count of active users (verified users)
+      const activeUsersResult = await pool.query(
+        'SELECT COUNT(*) FROM users WHERE is_verified = true'
+      );
+      const activeUsers = parseInt(activeUsersResult.rows[0].count);
+
+      // Get count of non-active users (unverified users)
+      const nonActiveUsersResult = await pool.query(
+        'SELECT COUNT(*) FROM users WHERE is_verified = false'
+      );
+      const nonActiveUsers = parseInt(nonActiveUsersResult.rows[0].count);
+
+      // Get total revenue (sum of all completed course purchases)
+      const totalRevenueResult = await pool.query(`
+        SELECT COALESCE(SUM(amount), 0) as total_revenue
+        FROM user_courses
+        WHERE status = 'completed'
+      `);
+      const totalRevenue = parseFloat(totalRevenueResult.rows[0].total_revenue);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          activeCourses,
+          activeUsers,
+          nonActiveUsers,
+          totalRevenue,
+        },
+        message: 'Statistics retrieved successfully',
+      });
+    } catch (error) {
+      console.error('Get statistics error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 }

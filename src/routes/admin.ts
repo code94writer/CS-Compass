@@ -22,21 +22,97 @@ const updateCategoryValidation = [
 // All admin routes require authentication and admin role
 router.use(authenticateToken, requireAdmin);
 
+// /**
+//  * @swagger
+//  * /api/admin/dashboard:
+//  *   get:
+//  *     summary: Get admin dashboard stats
+//  *     tags: [Admin]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     responses:
+//  *       200:
+//  *         description: Dashboard stats
+//  *       401:
+//  *         description: Unauthorized
+//  */
+// router.get('/dashboard', AdminController.getDashboardStats);
+
 /**
  * @swagger
- * /api/admin/dashboard:
+ * /api/admin/statistics:
  *   get:
- *     summary: Get admin dashboard stats
+ *     summary: Get platform statistics
+ *     description: Returns comprehensive platform statistics including active courses count, active users count, non-active users count, and total revenue from course sales
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Dashboard stats
+ *         description: Platform statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     activeCourses:
+ *                       type: integer
+ *                       description: Total count of active courses
+ *                       example: 25
+ *                     activeUsers:
+ *                       type: integer
+ *                       description: Total count of active (verified) users
+ *                       example: 150
+ *                     nonActiveUsers:
+ *                       type: integer
+ *                       description: Total count of non-active (unverified) users
+ *                       example: 30
+ *                     totalRevenue:
+ *                       type: number
+ *                       format: float
+ *                       description: Total revenue from all completed course purchases
+ *                       example: 125000.50
+ *                 message:
+ *                   type: string
+ *                   example: Statistics retrieved successfully
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - Invalid or missing authentication token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized
+ *       403:
+ *         description: Forbidden - User does not have admin privileges
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Access denied. Admin role required.
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Internal server error
  */
-router.get('/dashboard', AdminController.getDashboardStats);
+router.get('/statistics', AdminController.getStatistics);
 
 /**
  * @swagger
