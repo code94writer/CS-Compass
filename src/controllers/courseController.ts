@@ -49,12 +49,22 @@ class CourseController {
       const id = req.params.id;
       const course = await CourseModel.getCourseById(id);
       if (!course) return ResponseHelper.notFound(res, 'Course not found');
+      
+      // Check if user is authenticated and has purchased this course
+      // @ts-ignore
+      const user = req.user;
+      let isPurchased = false;
+      
+      if (user && user.id) {
+        isPurchased = await UserCourseModel.hasAccess(user.id, id);
+      }
+      
       // Fetch PDFs and videos for this course
       const [pdfs, videos] = await Promise.all([
         (await import('../models/PDF')).PDFModel.findAll(100, 0, id),
         (await import('../models/Video')).default.findByCourseId(id)
       ]);
-      return ResponseHelper.success(res, { ...course, pdfs, videos });
+      return ResponseHelper.success(res, { ...course, pdfs, videos, isPurchased });
     } catch (err) {
       return next(err);
     }
