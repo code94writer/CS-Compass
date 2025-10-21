@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
+import path from 'path';
 
 // Import configurations
 import { swaggerSpec } from './config/swagger';
@@ -128,6 +129,24 @@ async function startServer() {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'CS Compass API Documentation',
   }));
+
+  // Static file serving - expose only specific folders
+  const uploadsPath = path.join(__dirname, '../uploads');
+  
+  // Serve course thumbnails
+  app.use('/uploads/course-thumbnails', 
+    express.static(path.join(uploadsPath, 'course-thumbnails'))
+  );
+  
+  // Serve PDF thumbnails
+  app.use('/uploads/thumbnails', 
+    express.static(path.join(uploadsPath, 'thumbnails'))
+  );
+  
+  logger.info('Static file serving configured', {
+    courseThumbnails: '/uploads/course-thumbnails',
+    pdfThumbnails: '/uploads/thumbnails'
+  });
 
   // Health check endpoint
   app.get('/health', (req, res) => {

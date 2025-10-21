@@ -433,7 +433,7 @@ export class AdminController {
         description: req.body.description || '',
         course_id: courseId,
         file_url: `uploads/local/${fileName}`,
-        thumbnail_url: thumbnailRelPath,
+        thumbnail_url: `${process.env.SERVER_URL}/${thumbnailRelPath}`,
         file_size: fileSize,
         is_active: true,
         uploaded_by: uploadedBy,
@@ -752,7 +752,7 @@ export class AdminController {
 
       // Update course with new thumbnail URL
       const updatedCourse = await CourseModel.updateCourse(courseId, {
-        thumbnail_url: thumbnailPath
+        thumbnail_url: `${process.env.SERVER_URL}/${thumbnailPath}`
       });
 
       res.status(200).json({
